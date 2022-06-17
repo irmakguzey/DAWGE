@@ -1,0 +1,59 @@
+controller_list:
+  - name: fake_all_legs_controller
+    type: $(arg fake_execution_type)
+    joints:
+      - FL_hip_joint
+      - FL_thigh_joint
+      - FL_calf_joint
+      - FR_hip_joint
+      - FR_thigh_joint
+      - FR_calf_joint
+      - RL_hip_joint
+      - RL_thigh_joint
+      - RL_calf_joint
+      - RR_hip_joint
+      - RR_thigh_joint
+      - RR_calf_joint
+  - name: fake_fr_leg_controller
+    type: $(arg fake_execution_type)
+    joints:
+      - FR_hip_joint
+      - FR_thigh_joint
+      - FR_calf_joint
+  - name: fake_fl_leg_controller
+    type: $(arg fake_execution_type)
+    joints:
+      - FL_hip_joint
+      - FL_thigh_joint
+      - FL_calf_joint
+  - name: fake_rr_leg_controller
+    type: $(arg fake_execution_type)
+    joints:
+      - RR_hip_joint
+      - RR_thigh_joint
+      - RR_calf_joint
+  - name: fake_rl_leg_controller
+    type: $(arg fake_execution_type)
+    joints:
+      - RL_hip_joint
+      - RL_thigh_joint
+      - RL_calf_joint
+  - name: fake_fl_foot_controller
+    type: $(arg fake_execution_type)
+    joints:
+      []
+  - name: fake_fr_foot_controller
+    type: $(arg fake_execution_type)
+    joints:
+      []
+  - name: fake_rr_foot_controller
+    type: $(arg fake_execution_type)
+    joints:
+      []
+  - name: fake_rl_foot_controller
+    type: $(arg fake_execution_type)
+    joints:
+      []
+initial:  # Define initial robot poses per group
+  - group: all_legs
+    pose: home

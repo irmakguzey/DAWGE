@@ -27,7 +27,7 @@ double jointLinearInterpolation(double initPos, double targetPos, double rate)
     double p;
     rate = std::min(std::max(rate, 0.0), 1.0);
     // Will make the robot go to the target pose slowly
-    p = initPos*(1-rate) + targetPose*rate;
+    p = initPos*(1-rate) + targetPos*rate;
     return p;
 }
 
@@ -40,7 +40,7 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
     std::cin.ignore();
 
     ros::NodeHandle n;
-    ros::Rate loop_rate(200); // 500Hz frequency to send the data
+    ros::Rate loop_rate(500); // 500Hz frequency to send the data
 
     int rate_count = 0; // To make the joints move slowly -- NOTE: should be set to zero when there is a new end effector command
     float qInit[3] = {0};
@@ -62,7 +62,7 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
     pthread_create(&tid, NULL, update_loop<TLCM>, &roslcm);
 
     // Set the message sending level to low
-    // SendLowROS.levelFlag = LOWLEVEL; - TODO: Change this
+    // SendLowROS.levelFlag = LOWLEVEL;
     printf("levelFlag set to LOWLEVEL");
 
     while (ros::ok()) {
@@ -92,7 +92,7 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
             qInit[2] = RecvLowROS.motorState[FR_2].q;
 
             rate_count++;
-            double rate = rate_count / 200.0; // It will move to the desired position slowly
+            double rate = rate_count / 500.0; // It will move to the desired position slowly
 
             // Set the destionation positions by using jointLinearInterpolation
             qDes[0] = jointLinearInterpolation(qInit[0], goalQs[0], rate);
@@ -129,6 +129,7 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
         if(count > 10){
             count = 10;
             initiated_flag = true;
+        }
     }
     return 0;
 }
