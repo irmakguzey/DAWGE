@@ -134,3 +134,7 @@ ext_pkgs/devel
 ext_pkgs/build
 ext_pkgs/.catkin_workspace
 *.zip
+
+# ROS build and devel directories shouldn't be included
+build/ 
+devel/
