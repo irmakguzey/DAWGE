@@ -129,8 +129,8 @@ dmypy.json
 .pyre/
 
 # Add other github repos that are inside here
-ros_ws/src/unitree_legged_sdk-3.2
-ros_ws/devel 
-ros_ws/build
-ros_ws/.catkin_workspace
+ext_pkgs/src/unitree_legged_sdk-3.2
+ext_pkgs/devel 
+ext_pkgs/build
+ext_pkgs/.catkin_workspace
 *.zip
