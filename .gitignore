@@ -133,8 +133,9 @@ ext_pkgs/src/unitree_legged_sdk-3.2
 ext_pkgs/devel 
 ext_pkgs/build
 ext_pkgs/.catkin_workspace
-*.zip
 
 # ROS build and devel directories shouldn't be included
 build/ 
 devel/
+
+.vscode

@@ -77,7 +77,7 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
         SendLowROS.motorCmd[i].dq = VelStopF;
         SendLowROS.motorCmd[i].Kd = 0;
         SendLowROS.motorCmd[i].tau = 0;
-    }
+    } // TODO: Maybe we should add this to JPosInitializer?
 
     while (ros::ok()){
         roslcm.Get(RecvLowLCM);
