@@ -9,7 +9,11 @@ find_package(catkin REQUIRED COMPONENTS
     unitree_legged_msgs
 )
 
-catkin_package()
+catkin_package(
+    INCLUDE_DIRS include
+    CATKIN_DEPENDS roscpp
+    DEPENDS system_lib
+)
 
 include_directories(
     include

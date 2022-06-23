@@ -62,6 +62,9 @@
   <exec_depend>sensor_msgs</exec_depend>
   <exec_depend>std_msgs</exec_depend>
 
+  <depend>unitree_legged_msgs</depend>
+  <depend>unitree_legged_real</depend>
+
 
   <!-- The export tag contains other, unspecified, tags -->
   <export>
