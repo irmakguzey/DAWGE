@@ -39,10 +39,10 @@ class LegController {
 
   void zeroCommand();
   // void edampCommand(RobotType robot, T gain); -- TODO: could be implemented later
-  void updateData(const SpiData* spiData);
-  void updateCommand(SpiCommand* spiCommand);
-  void setEnabled(bool enabled) { _legsEnabled = enabled; };
-  void setLcm(leg_control_data_lcmt* data, leg_control_command_lcmt* command);
+  void updateData(unitree_legged_msgs::LowState &recvLowROS);
+  void updateCommand(unitree_legged_msgs::LowCmd &sendLowROS);
+  // void setEnabled(bool enabled) { _legsEnabled = enabled; };
+  // void setLcm(leg_control_data_lcmt* data, leg_control_command_lcmt* command);
 
 
   LegControllerCommand<T> commands[4];

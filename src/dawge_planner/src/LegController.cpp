@@ -75,6 +75,8 @@ void LegController<T>::updateCommand(unitree_legged_msgs::LowCmd &sendLowROS) {
     for (int jid = 0; jid < 3; jid++) {
       // command torque
       sendLowROS.motorCmd[3*leg + jid].tau = legTorque(jid);
+      // commands[leg].tauFeedForward = legTorque(jid); // Update legConrtoller's commands variable
+      // commands[leg].forceFeedForward = 
 
       // joint space PD
       sendLowROS.motorCmd[3*leg + jid].Kd = commands[leg].kdJoint(jid, jid);
@@ -83,6 +85,8 @@ void LegController<T>::updateCommand(unitree_legged_msgs::LowCmd &sendLowROS) {
       // destinated position and velocity
       sendLowROS.motorCmd[3*leg + jid].q = commands[leg].qDes(jid);
       sendLowROS.motorCmd[3*leg + jid].dq = commands[leg].qdDes(jid);
+
+      // TODO: add IK here - from p to qDes's
       
     }
     // Estimate torque -- I think this is torque we get from the robot (?)
@@ -154,11 +158,9 @@ void computeLegJacobianAndPosition(Vec3<T>& q, Mat3<T>* J,
   }
 }
 
-template void computeLegJacobianAndPosition<double>(Quadruped<double>& quad,
-                                                    Vec3<double>& q,
+template void computeLegJacobianAndPosition<double>(Vec3<double>& q,
                                                     Mat3<double>* J,
                                                     Vec3<double>* p, int leg);
-template void computeLegJacobianAndPosition<float>(Quadruped<float>& quad,
-                                                   Vec3<float>& q,
+template void computeLegJacobianAndPosition<float>(Vec3<float>& q,
                                                    Mat3<float>* J,
                                                    Vec3<float>* p, int leg);

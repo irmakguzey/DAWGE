@@ -55,6 +55,15 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
     bool initiated_flag = false; // Give time for the initialization
     int count = 0;
 
+    // Initialize the standing target joint positions
+    float standing_target_jpos[4][3] =
+    {
+        {-0.077036, 0.781234, -1.678993}, // FR
+        {0.077036, 0.781234, -1.678993}, // FL
+        {-0.077036, 0.781234, -1.678993}, // RR
+        {0.077036, 0.781234, -1.678993}, // RL
+    };
+
     LegController<float>* legController = new LegController<float>();
     // UNITREE_LEGGED_SDK::LCM roslcm(LOWLEVEL);
 
@@ -83,8 +92,16 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
         roslcm.Get(recvLowLCM);
         recvLowROS = ToRos(recvLowLCM); // Use this for the setup and final steps of leg controller
 
+        // Update the data in LegController
+        legController.updateData(recvLowROS);
+
         if (initiated_flag == true) {
-            motiontime++;
+            motiontime++;    
+
+            // Initial position of each feet are calculated in updateData (in computeLegJacobianAndPosition)        
+            std::vector< Vec3<float> > ini_foot_pos;
+            std::vector< Vec3<float> > ini_leg_pos; // Initial joint angles for one leg (traversed through all legs in setting commands)
+            
 
             // Set the joint kp/kds
             Mat3<float> kpJointMat;
@@ -113,15 +130,28 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
                 legController.commands[leg].kdJoint = kdJointMat;
                 legController.commands[leg].kpCartesian = kpCartesianMat;
                 legController.commands[leg].kdCartesian = kdCartesianMat;
-            }
-
+                
+                // Set the desired position for each feet (for standing up)
+                ini_foot_pos[leg] = legController.datas[leg].p;
+                legController.commands[leg].pDes = ini_foot_pos[leg];
+                legController.commands[leg].pDes[2] = jointLinearInterpolation(ini_foot_pos[leg][2], -0.3, motiontime/200.0);
             
-            this->_data->_legController->commands[i].pDes = _ini_foot_pos[i];
-            this->_data->_legController->commands[i].pDes[2] = 
-                progress*(-hMax) + (1. - progress) * _ini_foot_pos[i][2];
-
+                // Set the desired angle positions for each joint
+                // Get the current joint position
+                ini_leg_pos = legController.datas[leg].q;
+                // Get desired joint angle for each joint
+                for (int jid = 0; jid < 3; jid++) {
+                    legController.commands[leg].qDes[jid] = jointLinearInterpolation(ini_leg_pos[jid], 
+                                                                                     standing_target_jpos[leg][jid],
+                                                                                     motiontime/200.0);
+                }
+            }
+            // this->_data->_legController->commands[i].pDes = _ini_foot_pos[i];
+            // this->_data->_legController->commands[i].pDes[2] = 
+            //     progress*(-hMax) + (1. - progress) * _ini_foot_pos[i][2]; -> -hMax olduguna dikkat et!! 
         }
 
+        // Set up 
         sendLowLCM = ToLcm(sendLowROS, sendLowLCM);
         roslcm.Send(sendLowLCM);
         ros::spinOnce();
