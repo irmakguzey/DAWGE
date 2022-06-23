@@ -5,9 +5,7 @@
 #include <boost/thread/mutex.hpp> 
 #include <unitree_legged_msgs/LowCmd.h> 
 #include <unitree_legged_msgs/LowState.h>
-#include "convert.h" // This should be added to this package
 #include "cppTypes.h"
-
 
 using namespace UNITREE_LEGGED_SDK;
 
@@ -55,5 +53,3 @@ class LegController {
 template <typename T>
 void computeLegJacobianAndPosition(Vec3<T>& q, Mat3<T>* J,
                                    Vec3<T>* p, int leg);
-
-#endif  // PROJECT_LEGCONTROLLER_H

@@ -10,7 +10,7 @@
 #include <boost/thread/mutex.hpp>
 #include <unitree_legged_msgs/LowCmd.h>
 #include <unitree_legged_msgs/LowState.h>
-#include "convert.h"
+#include "unitree_legged_real/convert.h"
 
 #include <LegController.h> // LegController Header - our own leg controller implementation
 
