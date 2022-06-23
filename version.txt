@@ -1,5 +1,5 @@
 Version 1.0.0:
-- LegController implemented by MIT repo
+- LegController implemented from MIT repo
 - main_helper is implemented. main_helper.cpp is a merge of RobotRunner and main_helper inside MIT repo. 
 - JPosInitializer and BSplineBasic are added but are not yet used. Initial positions are going to be received and added as a yaml file. 
 - a1.urdf is added from a1_description ROS package.
