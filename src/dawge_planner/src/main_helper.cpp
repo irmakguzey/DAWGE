@@ -64,7 +64,7 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
         {0.077036, 0.781234, -1.678993}, // RL
     };
 
-    LegController<float>* legController = new LegController<float>();
+    LegController<float> legController;
     // UNITREE_LEGGED_SDK::LCM roslcm(LOWLEVEL);
 
     TCmd sendLowLCM = {0};
@@ -99,7 +99,7 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
             motiontime++;    
 
             // Initial position of each feet are calculated in updateData (in computeLegJacobianAndPosition)        
-            std::vector< Vec3<float> > ini_foot_pos;
+            Vec3<float> ini_foot_pos;
             std::vector< Vec3<float> > ini_leg_pos; // Initial joint angles for one leg (traversed through all legs in setting commands)
             
 
@@ -132,6 +132,7 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
                 legController.commands[leg].kdCartesian = kdCartesianMat;
                 
                 // Set the desired position for each feet (for standing up)
+                // TODO: Delete these parts for now? 
                 ini_foot_pos[leg] = legController.datas[leg].p;
                 legController.commands[leg].pDes = ini_foot_pos[leg];
                 legController.commands[leg].pDes[2] = jointLinearInterpolation(ini_foot_pos[leg][2], -0.3, motiontime/200.0);
@@ -150,6 +151,9 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
             // this->_data->_legController->commands[i].pDes[2] = 
             //     progress*(-hMax) + (1. - progress) * _ini_foot_pos[i][2]; -> -hMax olduguna dikkat et!! 
         }
+
+        // update the command in leg controller
+        legController.updateCommand(sendLowROS); // TODO: add main_helper.cpp inside the robot
 
         // Set up 
         sendLowLCM = ToLcm(sendLowROS, sendLowLCM);
