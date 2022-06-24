@@ -23,8 +23,11 @@ void* update_loop(void* param) {
 }
 
 UNITREE_LEGGED_SDK::HighCmd highCmdLCM;
-void highCmdROSCallback(unitree_legged_msgs::HighCmd& highCmdROS) {
-    printf("received highCmdROS in high cmd callback: %s", highCmdROS.data);
+void highCmdROSCallback(const unitree_legged_msgs::HighCmd& msg) {
+    unitree_legged_msgs::HighCmd highCmdROS = msg;
+    // printf("received highCmdROS in high cmd callback: %s", msg);
+    printf("highCmdROS inside the callback - highCmdROS.forwardSpeed: %f, highCmdROS.mode: %d\n",
+        highCmdROS.forwardSpeed, highCmdROS.mode);
     highCmdLCM = ToLcm(highCmdROS, highCmdLCM);
 }
 
@@ -41,7 +44,7 @@ int mainHelper(int argc, char *argv[],
 
     // ROS initializations
     ros::NodeHandle n;
-    ros::Rate loopRate(20); // TODO: This if this is too low
+    ros::Rate loopRate(100); // TODO: This if this is too low
     ros::Publisher pub;
     ros::Subscriber sub;
 
@@ -51,12 +54,12 @@ int mainHelper(int argc, char *argv[],
     roslcm.SubscribeState();
 
     pthread_t tid; 
-    pthread_create(&tid, NULL, update_loop<TLCM>, &roslcm);
+    pthread_create(&tid, NULL, update_loop<UNITREE_LEGGED_SDK::LCM>, &roslcm);
 
     // Initialize ROS publishers/subscribers
-    printf("highStateTopic: %s", highStateTopic);
-    pub = n.advertise<unitree_legged_msgs::HighState>(highStateTopic, 1000);
-    sub = n.subscribe(highCmdTopic, 1000, highCmdROSCallback);
+    // printf("highStateTopic: %s", highStateTopic);
+    pub = n.advertise<unitree_legged_msgs::HighState>(highStateTopic, 10);
+    sub = n.subscribe(highCmdTopic, 10, highCmdROSCallback);
 
     // Get the first message if there is any
     ros::spinOnce();
@@ -69,9 +72,11 @@ int mainHelper(int argc, char *argv[],
         highStateROS = ToRos(highStateLCM);
 
         // Publish high state
+        printf("highStateROS.forwardPosition: %f\n", highStateROS.forwardPosition);
         pub.publish(highStateROS);
 
         // Send the highCommandLCM
+        printf("highCmdLCM.forwardSpeed: %f\n", highCmdLCM.forwardSpeed);
         roslcm.Send(highCmdLCM);
 
         // Sleep and spinOnce

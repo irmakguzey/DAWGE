@@ -24,12 +24,9 @@ class HighLevelTask():
         # Initialize the rate for running loop
         self.rate = rospy.Rate(rate) # NOTE: Check if this is the way to go
 
-        # This method will call update_high_cmd which will be different for each task
-        # self.run()
-
     def high_state_cb(self, data):
         self.high_state_msg = data
-        print('self.high_state_msg: {}'.format(data)) # TODO: delete this once you make sure everything works well
+        # print('self.high_state_msg: {}'.format(data)) # TODO: delete this once you make sure everything works well
 
     def run(self):
         while not rospy.is_shutdown():

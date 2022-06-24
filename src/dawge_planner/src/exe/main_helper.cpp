@@ -28,10 +28,10 @@ void* update_loop(void* param)
 }
 
 // Positions to send might be sent from this node
-double jointLinearInterpolation(double initPos, double targetPos, double rate)
+float jointLinearInterpolation(float initPos, float targetPos, float rate)
 {
-    double p;
-    rate = std::min(std::max(rate, 0.0), 1.0);
+    float p;
+    rate = std::min(std::max(rate, 0.0f), 1.0f);
     p = initPos*(1-rate) + targetPos*rate;
     return p;
 }
@@ -99,8 +99,8 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
             motiontime++;    
 
             // Initial position of each feet are calculated in updateData (in computeLegJacobianAndPosition)        
-            Vec3<float> ini_foot_pos;
-            std::vector< Vec3<float> > ini_leg_pos; // Initial joint angles for one leg (traversed through all legs in setting commands)
+            std::vector< Vec3<float> > ini_feet_pos;
+            Vec3<float> ini_leg_pos; // Initial joint angles for one leg (traversed through all legs in setting commands)
             
 
             // Set the joint kp/kds
@@ -133,9 +133,9 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
                 
                 // Set the desired position for each feet (for standing up)
                 // TODO: Delete these parts for now? 
-                ini_foot_pos[leg] = legController.datas[leg].p;
-                legController.commands[leg].pDes = ini_foot_pos[leg];
-                legController.commands[leg].pDes[2] = jointLinearInterpolation(ini_foot_pos[leg][2], -0.3, motiontime/200.0);
+                ini_feet_pos[leg] = legController.datas[leg].p;
+                legController.commands[leg].pDes = ini_feet_pos[leg];
+                legController.commands[leg].pDes[2] = jointLinearInterpolation(ini_feet_pos[leg][2], -0.3, motiontime/200.0);
             
                 // Set the desired angle positions for each joint
                 // Get the current joint position
@@ -166,7 +166,12 @@ int mainHelper(int argc, char *argv[], TLCM &roslcm)
             count = 10;
             initiated_flag = true;
         }
-
     }
+}
 
+int main(int argc, char *argv[]){
+    ros::init(argc, argv, "dawge_main_helper_lowlevel");
+
+    UNITREE_LEGGED_SDK::LCM roslcm(LOWLEVEL);
+    mainHelper<UNITREE_LEGGED_SDK::LowCmd, UNITREE_LEGGED_SDK::LowState, UNITREE_LEGGED_SDK::LCM>(argc, argv, roslcm);
 }

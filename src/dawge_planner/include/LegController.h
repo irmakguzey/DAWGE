@@ -7,7 +7,7 @@
 #include <unitree_legged_msgs/LowState.h>
 #include "cppTypes.h"
 
-using namespace UNITREE_LEGGED_SDK;
+// using namespace UNITREE_LEGGED_SDK;
 
 template <typename T>
 struct LegControllerCommand {

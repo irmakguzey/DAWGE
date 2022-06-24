@@ -14,3 +14,10 @@ Version 1.0.1:
     - comm_hardware is the executable to communicate high level ROS topics and the robot with LCm
 - CMakeList not updated yet
 - It has not been built yet
+
+----------
+
+Version 1.1.0:
+- TaskBase, MoveForwardTask and comm_hw work
+    We have managed to move the robot 1m with this setup
+- A script to update all the contents of dawge_planner package inside unitree robot

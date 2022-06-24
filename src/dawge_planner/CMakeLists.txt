@@ -18,7 +18,6 @@ find_package(catkin REQUIRED COMPONENTS
 catkin_package(
   INCLUDE_DIRS include
   CATKIN_DEPENDS roscpp rospy sensor_msgs std_msgs
-  DEPENDS system_lib
 )
 
 include_directories(
@@ -38,6 +37,17 @@ add_definitions(-DSDK3_2)
 
 add_library(leg_controller_lib src/LegController.cpp)
 
-add_executable(main_helper src/main_helper.cpp src/LegController.cpp)
+add_executable(main_helper src/exe/main_helper.cpp src/LegController.cpp)
 target_link_libraries(main_helper leg_controller_lib ${EXTRA_LIBS} ${catkin_LIBRARIES})
 add_dependencies(main_helper ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+
+catkin_install_python(
+  PROGRAMS
+  scripts/tasks/task_base.py 
+  scripts/tasks/move_forward_task.py
+  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
+
+add_executable(comm_hw src/exe/comm_hardware.cpp)
+target_link_libraries(comm_hw ${EXTRA_LIBS} ${catkin_LIBRARIES})
+add_dependencies(comm_hw ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
