@@ -9,7 +9,7 @@ from unitree_legged_msgs.msg import HighState, HighCmd # TODO: Check if this wor
 
 class HighLevelTask():
     # High commands will be published and high states will be listened
-    def __init__(self, high_cmd_topic, high_state_topic):
+    def __init__(self, high_cmd_topic, high_state_topic, rate):
         # Initialize ros node
         rospy.init_node("high_level_task")
 
@@ -22,7 +22,7 @@ class HighLevelTask():
         self.high_cmd_msg = HighCmd()
 
         # Initialize the rate for running loop
-        self.rate = rospy.Rate(20) # NOTE: Check if this is the way to go
+        self.rate = rospy.Rate(rate) # NOTE: Check if this is the way to go
 
         # This method will call update_high_cmd which will be different for each task
         # self.run()

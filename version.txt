@@ -6,3 +6,11 @@ Version 1.0.0:
 - version.txt is added. 
 
 ----------
+
+Version 1.0.1:
+- TaskBase, MoveForwardTask and comm_hardware executable is implemented
+    - TaskBase is a base task class for high level tasks 
+    - MoveForwardTask is a class for making the robot move forward with a set velocity only 
+    - comm_hardware is the executable to communicate high level ROS topics and the robot with LCm
+- CMakeList not updated yet
+- It has not been built yet
