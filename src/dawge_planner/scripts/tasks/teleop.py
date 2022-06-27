@@ -26,14 +26,12 @@ class TeleopTask(HighLevelTask):
 
     def twist_cb(self, data): 
         self.twist_msg = data 
-        print('self.twist_msg: {}'.format(self.twist_msg))
 
     def update_high_cmd(self):
         if self.twist_msg is None:
             return
 
         self.high_cmd_msg.mode = 2
-
 
         # Set the angular velocity - we will use set linear and angular velocity
         self.high_cmd_msg.rotateSpeed = 0

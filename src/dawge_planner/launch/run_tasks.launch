@@ -1,0 +1,21 @@
+<launch>
+
+    <!-- Task can either be teleop or move_forward here - there should be a config file and a task wrapper
+    to get the desired tasks and run the tasks - but for now roslaunch args are used -->
+    <arg name="task_name" default="teleop"/> 
+
+    <!-- Start the keyboard listener -->
+    <node pkg="teleop_twist_keyboard" name="teleop_keyboard" type="teleop_twist_keyboard.py"  output="screen" />
+
+    <!-- Start the task -->
+    <!--  Teleop  -->
+    <group if="$(eval arg('task_name') == 'teleop')">
+        <node pkg="dawge_planner" name="teleop" type="teleop.py"  output="screen" />
+    </group>
+
+    <!--  Move Forward  -->
+    <group if="$(eval arg('task_name') == 'move_forward')">
+        <node pkg="dawge_planner" name="move_forward" type="move_forward_task.py"  output="screen" />
+    </group>
+
+</launch>

@@ -27,7 +27,6 @@ class HighLevelTask():
 
     def high_state_cb(self, data):
         self.high_state_msg = data
-        # print('self.high_state_msg: {}'.format(data)) # TODO: delete this once you make sure everything works well
 
     def run(self):
         while not rospy.is_shutdown():
@@ -36,9 +35,6 @@ class HighLevelTask():
             if self.motion_time > self.rate_count*4 and self.is_initialized():
                 self.update_high_cmd()
 
-            # print('Publishing: rotateSpeed: {}, forwardSpeed: {}'.format(
-            #     self.high_cmd_msg.rotateSpeed, self.high_cmd_msg.forwardSpeed
-            # ))
             self.high_cmd_pub.publish(self.high_cmd_msg)
 
             self.rate.sleep()
