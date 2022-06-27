@@ -21,3 +21,13 @@ Version 1.1.0:
 - TaskBase, MoveForwardTask and comm_hw work
     We have managed to move the robot 1m with this setup
 - A script to update all the contents of dawge_planner package inside unitree robot
+
+
+----------
+
+Version 1.1.1:
+- Changed TaskBase name to HighLevelTask. 
+- Teleop module added. With a given velocity command high level commands are sent to the robot. 
+- Built in Bangalore computer is done. Python scripts should be run in Bangalore - basically anything hardware unrelated should run in Bangalore. 
+- Cleaned some of the python scripts. 
+- Launch files for both to run on the robot and on Bangalore should be added, then there will be an upgrade.
