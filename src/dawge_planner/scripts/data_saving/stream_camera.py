@@ -117,8 +117,8 @@ class RealSenseStream(object):
             self.rate.sleep()
 
 if __name__ == "__main__":
-    cam_serial_num = "023422073116" # TODO: update this  
-    height, width = (720, 1280)
+    cam_serial_num = "023422073116" 
+    height, width = (720, 1280) # TODO: these are not being used rn - you might wanna fix these
     print(f"Starting to setup camera: {cam_serial_num}.")
     camera = RealSenseStream(
         cam_serial_num = cam_serial_num,
