@@ -139,3 +139,6 @@ build/
 devel/
 
 .vscode
+
+# dawge_planner related things
+src/dawge_planner/data

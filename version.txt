@@ -31,3 +31,9 @@ Version 1.1.1:
 - Built in Bangalore computer is done. Python scripts should be run in Bangalore - basically anything hardware unrelated should run in Bangalore. 
 - Cleaned some of the python scripts. 
 - Launch files for both to run on the robot and on Bangalore should be added, then there will be an upgrade.
+
+----------
+
+Version 1.1.2:
+- Streaming and saving data is added
+- Works on Bangalore but haven't tested on DAWGE
