@@ -1,0 +1,38 @@
+defaults:
+    - _self_
+    - agent: cpn # forward model will also be added in the future - TODO: maybe add a wrapper agent class?
+    - optimizer: adam
+
+# this needs to be specified manually
+experiment: test_exp
+
+seed: 42
+device: cuda
+
+train_epochs: 1000
+save_frequency: 10
+eval_frequency: 10
+train_dset_split: 0.8
+
+batch_size: 256
+distributed: true
+num_workers: 4
+
+world_size: 1
+num_gpus: 4
+
+fps: 30 # This should be the same as the all the fps in saving - little differences are not going to be taken
+sec_interval: 1 # seconds to separate two timesteps
+frame_interval: ??? # Will be equal to fps * sec_interval - frames to separate two timesteps
+video_type: color # NOTE: you could remove this if you want to use both
+
+data_dir: /home/irmak/Workspace/DAWGE/src/dawge_planner/data
+checkpoint_dir: ??? # Will be set to hydra dir inside the code
+
+# logger
+log_frequency: 1
+
+# hydra configuration - should be received separately
+hydra:
+    run:
+        dir: /home/irmak/Workspace/DAWGE/contrastive_learning/out/${now:%Y.%m.%d}/${now:%H-%M}_${experiment}

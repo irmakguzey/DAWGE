@@ -142,3 +142,8 @@ devel/
 
 # dawge_planner related things
 src/dawge_planner/data
+
+# contrastive_learning related things
+contrastive_learning/out
+
+wandb

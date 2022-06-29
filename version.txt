@@ -37,3 +37,11 @@ Version 1.1.1:
 Version 1.1.2:
 - Streaming and saving data is added
 - Works on Bangalore but haven't tested on DAWGE
+
+
+----------
+
+Version 1.2.0
+- Contrastive Learning added
+- It is not complete yet when it's complete version will go up to 2.0.0
+- Bangalore will be formatted
