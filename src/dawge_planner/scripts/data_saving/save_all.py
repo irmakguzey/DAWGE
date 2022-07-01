@@ -1,11 +1,56 @@
 #!/usr/bin/env python3
 
 import os
+import rospy
+import signal
 
 from datetime import datetime
 
 from save_stream import SaveStream
-from save_robot import SaveRobot
+from save_robot import SaveRobotCmds
+
+class SaveAll:
+    def __init__(self, data_dir, fps):
+        rospy.init_node('dawge_save', disable_signals=True)
+
+        os.makedirs(data_dir, exist_ok=True)
+        video_dir = '{}/videos'.format(data_dir)
+        os.makedirs(video_dir, exist_ok=True)
+
+        self.video_saver = SaveStream(
+            video_dir=video_dir,
+            depth_img_topic='/camera/depth/image_rect_raw',
+            color_img_topic='/camera/color/image_raw',
+            cam_fps=fps
+        )      
+
+        self.robot_saver = SaveRobotCmds(
+            data_dir=data_dir,
+            high_cmd_topic="dawge_high_cmd",
+            high_state_topic="dawge_high_state",
+            fps=fps
+        )
+
+        self.frame_count = 0
+        self.rate = rospy.Rate(fps)
+        signal.signal(signal.SIGINT, self.end_signal_handler)
+
+    def run(self):
+        while not rospy.is_shutdown():
+            if self.video_saver.initialized():
+                self.frame_count += 1
+                self.video_saver.dump_images() # Sends dumps the last received images
+                self.robot_saver.append_msgs() # Saves the last received high command
+                print(f'Frame: {self.frame_count}')
+            else:
+                print("Waiting for frames!")
+            self.rate.sleep()
+
+    def end_signal_handler(self, signum, frame):
+        self.video_saver.convert_to_video()
+        self.robot_saver.dump()
+        rospy.signal_shutdown('Ctrl C pressed')
+        exit(1)
 
 if __name__ == "__main__":
     now = datetime.now()
@@ -14,31 +59,12 @@ if __name__ == "__main__":
         '/home/irmak/Workspace/DAWGE/src/dawge_planner/data',
         time_str
     )
-    os.mkdir(data_dir)
-    video_dir = '{}/videos'.format(data_dir)
 
     # TODO: Get the camera fps here
-    fps = 30
+    fps = 15
 
-    # Save the video stream
-    video_saver = SaveStream(
-        video_dir=video_dir,
-        color_img_topic='/dawge_camera/color_image',
-        depth_img_topic='/dawge_camera/depth_image',
-        cam_fps=fps
-    ) 
-
-    video_saver.run()
-
-    # Save the commands and states 
-    robot_saver = SaveRobot(
-        data_dir=data_dir,
-        high_cmd_topic="dawge_high_cmd",
-        high_state_topic="dawge_high_state",
-        fps=fps
-    )
-
-    robot_saver.run()
+    data_saver = SaveAll(data_dir, fps)
+    data_saver.run()
 
 
 

@@ -15,4 +15,7 @@
     <!-- Run the communication hardware exec to communicate lcm server with ROS -->
     <node pkg="dawge_planner" name="comm_hw" type="comm_hw"  output="screen" />
 
+    <!-- TODO: add stream_camera here -->
+    
+
 </launch>

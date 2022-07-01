@@ -16,14 +16,16 @@ from datetime import datetime
 from sensor_msgs.msg import Image # Image data will be taken - cv2 bridge can also be used to invert these but for now 
 
 class SaveStream: # Class to save image streams
-    def __init__(self, video_dir, color_img_topic, depth_img_topic=None, cam_fps=30):
+    def __init__(self, video_dir, color_img_topic, depth_img_topic=None, cam_fps=15):
         '''
         video_dir: directory to dump all the images before converting it to a video - it should be created before
         '''
-        rospy.init_node('dawge_camera_save', disable_signals=True) # To convert images to video in the end
+        # rospy.init_node('dawge_camera_save', disable_signals=True) # To convert images to video in the end
 
         # Create an opencv bridge to save the images
         self.cv_bridge = cv_bridge.CvBridge()
+        self.color_img_msg = None
+        self.depth_img_msg = None
 
         self.video_fps = cam_fps
         self.video_dir = video_dir # This is the path where the final videos should be dumped
@@ -45,41 +47,40 @@ class SaveStream: # Class to save image streams
     def run(self):
         rospy.spin()
 
-    # Callback function for colorful img 
-    # It should be dumped to video_dir 
     def color_img_cb(self, data): 
-        stamp = rospy.get_rostime()
-        img_name = float('{}.{:09d}'.format(stamp.secs, stamp.nsecs))
-        img_file_name = os.path.join(self.color_video_dir, '{}.jpg'.format(img_name))
-
-        cv2_img = self.cv_bridge.imgmsg_to_cv2(data, "bgr8")
-
-        # TODO: Should you save img_names as well??
-
-        cv2.imwrite(img_file_name, cv2_img)
+        self.color_img_msg = data
 
     def depth_img_cb(self, data):
+        self.depth_img_msg = data
+
+    def initialized(self):
+        return (self.depth_img_msg is not None) and (self.color_img_msg is not None)
+
+    def dump_images(self): # Writes the current image - this is for synchronization
         stamp = rospy.get_rostime()
         img_name = float('{}.{:09d}'.format(stamp.secs, stamp.nsecs))
-        img_file_name = os.path.join(self.depth_video_dir, '{}.jpg'.format(img_name))
 
-        cv2_img = self.cv_bridge.imgmsg_to_cv2(data)
+        color_img_path = os.path.join(self.color_video_dir, '{}.jpg'.format(img_name))
+        depth_img_path = os.path.join(self.depth_video_dir, '{}.jpg'.format(img_name))
 
-        # TODO: Should you save img_names as well??
+        color_cv2_img = self.cv_bridge.imgmsg_to_cv2(self.color_img_msg, "rgb8")
+        depth_cv2_img = self.cv_bridge.imgmsg_to_cv2(self.depth_img_msg)
 
-        cv2.imwrite(img_file_name, cv2_img)
-
+        cv2.imwrite(color_img_path, color_cv2_img)
+        cv2.imwrite(depth_img_path, depth_cv2_img)
+        print('color img -> {}'.format(color_img_path))
 
     def convert_to_video(self): 
         before_dumping = datetime.now()
 
+        print('DUMPING VIDEO')
         color_video_name = '{}/color_video.mp4'.format(self.video_dir)
         os.system('ffmpeg -f image2 -r {} -i {}/%*.jpg -vcodec libx264 -profile:v high444 -pix_fmt yuv420p {}'.format(
             self.video_fps, # fps
             self.color_video_dir,
             color_video_name
         ))
-        shutil.rmtree(self.color_video_dir)
+        shutil.rmtree(self.color_video_dir, ignore_errors=True)
 
         if self.depth_video_dir is not None:
             depth_video_name = '{}/depth_video.mp4'.format(self.video_dir)
@@ -88,7 +89,7 @@ class SaveStream: # Class to save image streams
                 self.depth_video_dir,
                 depth_video_name
             ))
-            shutil.rmtree(self.depth_video_dir)
+            shutil.rmtree(self.depth_video_dir, ignore_errors=True)
 
         after_dumping = datetime.now()
         time_spent = after_dumping - before_dumping
@@ -113,9 +114,12 @@ if __name__ == '__main__':
 
     data_saver = SaveStream(
         video_dir=video_dir,
-        color_img_topic='/dawge_camera/color_image',
-        depth_img_topic='/dawge_camera/depth_image'
+        # color_img_topic='/dawge_camera/color_image',
+        # depth_img_topic='/dawge_camera/depth_image'
+        depth_img_topic='/camera/depth/image_rect_raw',
+        color_img_topic='/camera/color/image_raw',
+        cam_fps=15
     ) 
 
-    data_saver.save()
+    data_saver.run()
 

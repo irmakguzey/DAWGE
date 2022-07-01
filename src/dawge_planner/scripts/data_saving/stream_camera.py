@@ -23,8 +23,8 @@ class RealSenseStream(object):
         np.set_printoptions(suppress=True)
 
         # Creating ROS Publishers
-        self.color_image_publisher = rospy.Publisher('/dawge_camera/color_image', Image, queue_size = 1)
-        self.depth_image_publisher = rospy.Publisher('/dawge_camera/depth_image', Image, queue_size = 1)
+        self.color_image_publisher = rospy.Publisher('/camera/color/image_raw', Image, queue_size = 1)
+        self.depth_image_publisher = rospy.Publisher('/camera/depth/image_rect_raw', Image, queue_size = 1)
 
         # Initializing CvBridge
         self.bridge = CvBridge()
@@ -34,15 +34,15 @@ class RealSenseStream(object):
 
         # Starting the realsense camera stream
         self._start_realsense(cam_serial_num, resolution[0], resolution[1], cam_fps)
-        print(f"Started the Realsense pipeline for camera: {cam_serial_num}!")
+        print("Started the Realsense pipeline for camera: {}!".format(cam_serial_num))
 
     def _start_realsense(self, cam_serial_num, width, height, fps):
         config = rs.config()
         pipeline = rs.pipeline()
-        # config.enable_device(cam_serial_num)
+        config.enable_device(cam_serial_num)
 
-        # # Enabling camera streams
-        # config.enable_stream(rs.stream.color, width, height, rs.format.bgr8, fps)
+        # Enabling camera streams
+        config.enable_stream(rs.stream.color, width, height, rs.format.bgr8, fps)
         # config.enable_stream(rs.stream.depth, width, height, rs.format.z16, fps)
 
         # TODO: Fix this - maybe it will be fixed with USB3 cable but rn with these configs we
@@ -117,12 +117,12 @@ class RealSenseStream(object):
             self.rate.sleep()
 
 if __name__ == "__main__":
-    cam_serial_num = "023422073116" 
-    height, width = (720, 1280) # TODO: these are not being used rn - you might wanna fix these
-    print(f"Starting to setup camera: {cam_serial_num}.")
+    cam_serial_num = "109622072273" 
+    height, width = (480, 640) # TODO: these are not being used rn - you might wanna fix these
+    print("Starting to setup camera: {}.".format(cam_serial_num))
     camera = RealSenseStream(
         cam_serial_num = cam_serial_num,
         resolution = (height, width),
-        cam_fps = 30
+        cam_fps = 15
     )
     camera.stream()

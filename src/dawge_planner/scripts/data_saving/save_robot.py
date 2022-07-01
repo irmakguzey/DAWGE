@@ -14,11 +14,11 @@ from datetime import datetime
 
 from unitree_legged_msgs.msg import HighCmd, HighState
 
-class SaveRobot(): # Any data related to robot - high commands and high states should be saved
+class SaveRobotCmds(): # Any data related to robot - high commands and high states should be saved
     # High commands will be published and high states will be listened
     def __init__(self, data_dir, high_cmd_topic, high_state_topic, fps=30):
         # Initialize ros node
-        rospy.init_node("dawge_robot_save", disable_signals=True)
+        # rospy.init_node("dawge_robot_save", disable_signals=True)
 
         # Initialize the subscriber
         rospy.Subscriber(high_state_topic, HighState, self.high_state_cb)
@@ -28,19 +28,25 @@ class SaveRobot(): # Any data related to robot - high commands and high states s
 
         # Initialize the arrays
         self.data_dir = data_dir
+        os.makedirs(self.data_dir, exist_ok=True)
         self.high_cmds = []
         self.high_states = [] # For now we won't save the time stamps
 
         # Initialize the rate for running loop
         self.rate = rospy.Rate(fps) # NOTE: Check if this is the way to go
 
-        signal.signal(signal.SIGINT, self.end_signal_handler)
+        signal.signal(signal.SIGINT, self.end_signal_handler) 
 
     def high_state_cb(self, data):
         self.high_state_msg = data
 
     def high_cmd_cb(self, data):
         self.high_cmd_msg = data 
+
+    def append_msgs(self):
+        self.high_cmds.append(self.high_cmd_msg)
+        self.high_states.append(self.high_state_msg)
+        print('msgs appended')
 
     def run(self):
         while not rospy.is_shutdown():
@@ -51,6 +57,7 @@ class SaveRobot(): # Any data related to robot - high commands and high states s
 
     # Dump the commands and states as a pickle file
     def dump(self):
+        print("DUMPING ROBOT CMDS")
         with open('{}/commands.pickle'.format(self.data_dir), 'wb') as pkl:
             pickle.dump(self.high_cmds, pkl, pickle.HIGHEST_PROTOCOL)
         with open('{}/states.pickle'.format(self.data_dir), 'wb') as pkl:
@@ -71,10 +78,11 @@ if __name__ == '__main__':
         time_str
     )
 
-    data_saver = SaveRobot(
-        video_dir=data_dir,
+    data_saver = SaveRobotCmds(
+        data_dir=data_dir,
         high_cmd_topic='dawge_high_cmd',
-        high_state_topic='dawge_high_state'
+        high_state_topic='dawge_high_state',
+        fps=30
     ) 
 
     data_saver.run()
