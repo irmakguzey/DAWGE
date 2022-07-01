@@ -38,6 +38,11 @@ Version 1.1.2:
 - Streaming and saving data is added
 - Works on Bangalore but haven't tested on DAWGE
 
+----------
+
+Version 1.1.3:
+- Saving and streaming works
+
 
 ----------
 

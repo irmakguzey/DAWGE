@@ -57,8 +57,8 @@ if __name__ == "__main__":
         high_state_topic="dawge_high_state",
         rate=100,
         twist_topic="cmd_vel",
-        lin_vel=0.1,
-        ang_vel=0.1
+        lin_vel=0.15,
+        ang_vel=0.3
     )
 
     task.run()

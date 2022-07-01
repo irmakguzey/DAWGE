@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import argparse
 import os
 import rospy
 import signal
@@ -37,13 +38,15 @@ class SaveAll:
 
     def run(self):
         while not rospy.is_shutdown():
-            if self.video_saver.initialized():
+            if self.video_saver.initialized() and self.robot_saver.initialized():
+                if self.frame_count == 0:
+                    print('DATA SAVER INITIALIZED')
                 self.frame_count += 1
                 self.video_saver.dump_images() # Sends dumps the last received images
                 self.robot_saver.append_msgs() # Saves the last received high command
                 print(f'Frame: {self.frame_count}')
             else:
-                print("Waiting for frames!")
+                print(f"Waiting for frames! - video_saver.init: {self.video_saver.initialized()} - robot_saver.init: {self.robot_saver.initialized()}")
             self.rate.sleep()
 
     def end_signal_handler(self, signum, frame):
@@ -55,9 +58,16 @@ class SaveAll:
 if __name__ == "__main__":
     now = datetime.now()
     time_str = now.strftime('%d%m%Y_%H%M%S')
+
+    # Parse arguments - will be used if we want to name the directory ourselves
+    parser = argparse.ArgumentParser() 
+    parser.add_argument('--save_dir', type=str, default=time_str)
+
+    args = parser.parse_args()
+
     data_dir = '{}/{}'.format(
         '/home/irmak/Workspace/DAWGE/src/dawge_planner/data',
-        time_str
+        args.save_dir
     )
 
     # TODO: Get the camera fps here

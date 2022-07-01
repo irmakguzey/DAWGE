@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
 # This script will run inside the robot - saving the stream will run in bangalore
 
@@ -43,19 +43,19 @@ class RealSenseStream(object):
 
         # Enabling camera streams
         config.enable_stream(rs.stream.color, width, height, rs.format.bgr8, fps)
-        # config.enable_stream(rs.stream.depth, width, height, rs.format.z16, fps)
+        config.enable_stream(rs.stream.depth, width, height, rs.format.z16, fps)
 
         # TODO: Fix this - maybe it will be fixed with USB3 cable but rn with these configs we
         # are always getting the error that requests cannot be resolved
 
         # # Starting the pipeline
-        # cfg = pipeline.start(config)
-        cfg = pipeline.start()
+        cfg = pipeline.start(config)
+        # cfg = pipeline.start()
         device = cfg.get_device()
 
         # Setting the depth mode to high accuracy mode
         depth_sensor = device.first_depth_sensor()
-        depth_sensor.set_option(rs.option.visual_preset, 1) # High accuracy post-processing mode
+        depth_sensor.set_option(rs.option.visual_preset, 2) # High accuracy post-processing mode
         self.realsense = pipeline
 
         # Obtaining the color intrinsics matrix for aligning the color and depth images
@@ -73,7 +73,7 @@ class RealSenseStream(object):
 
     def _publish_color_image(self, color_image):
         try:
-            color_image = self.bridge.cv2_to_imgmsg(color_image, "bgr8")
+            color_image = self.bridge.cv2_to_imgmsg(color_image, "rgb8")
         except CvBridgeError as e:
             print(e)
 
@@ -117,7 +117,8 @@ class RealSenseStream(object):
             self.rate.sleep()
 
 if __name__ == "__main__":
-    cam_serial_num = "109622072273" 
+    # cam_serial_num = "109622072273" # This is the one on the robot
+    cam_serial_num = "023422073116" # The one on bangalore
     height, width = (480, 640) # TODO: these are not being used rn - you might wanna fix these
     print("Starting to setup camera: {}.".format(cam_serial_num))
     camera = RealSenseStream(

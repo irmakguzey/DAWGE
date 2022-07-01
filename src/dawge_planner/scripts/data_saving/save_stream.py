@@ -43,6 +43,7 @@ class SaveStream: # Class to save image streams
                 os.mkdir(self.depth_video_dir)
 
         signal.signal(signal.SIGINT, self.end_signal_handler) # TODO: not sure what to do here
+        self.frame = 0
 
     def run(self):
         rospy.spin()
@@ -57,13 +58,14 @@ class SaveStream: # Class to save image streams
         return (self.depth_img_msg is not None) and (self.color_img_msg is not None)
 
     def dump_images(self): # Writes the current image - this is for synchronization
-        stamp = rospy.get_rostime()
-        img_name = float('{}.{:09d}'.format(stamp.secs, stamp.nsecs))
+        self.frame += 1
+        # stamp = rospy.get_rostime()
+        # img_name = float('{}.{:09d}'.format(stamp.secs, stamp.nsecs))
 
-        color_img_path = os.path.join(self.color_video_dir, '{}.jpg'.format(img_name))
-        depth_img_path = os.path.join(self.depth_video_dir, '{}.jpg'.format(img_name))
+        color_img_path = os.path.join(self.color_video_dir, 'frame_{}.jpg'.format(self.frame))
+        depth_img_path = os.path.join(self.depth_video_dir, 'frame_{}.jpg'.format(self.frame))
 
-        color_cv2_img = self.cv_bridge.imgmsg_to_cv2(self.color_img_msg, "rgb8")
+        color_cv2_img = self.cv_bridge.imgmsg_to_cv2(self.color_img_msg, "bgr8") # It published as bgr8 so the saving should be bgr to make it rgb again
         depth_cv2_img = self.cv_bridge.imgmsg_to_cv2(self.depth_img_msg)
 
         cv2.imwrite(color_img_path, color_cv2_img)
@@ -80,7 +82,7 @@ class SaveStream: # Class to save image streams
             self.color_video_dir,
             color_video_name
         ))
-        shutil.rmtree(self.color_video_dir, ignore_errors=True)
+        # shutil.rmtree(self.color_video_dir, ignore_errors=True)
 
         if self.depth_video_dir is not None:
             depth_video_name = '{}/depth_video.mp4'.format(self.video_dir)
@@ -89,7 +91,7 @@ class SaveStream: # Class to save image streams
                 self.depth_video_dir,
                 depth_video_name
             ))
-            shutil.rmtree(self.depth_video_dir, ignore_errors=True)
+        # shutil.rmtree(self.depth_video_dir, ignore_errors=True)
 
         after_dumping = datetime.now()
         time_spent = after_dumping - before_dumping

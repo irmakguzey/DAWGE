@@ -43,10 +43,13 @@ class SaveRobotCmds(): # Any data related to robot - high commands and high stat
     def high_cmd_cb(self, data):
         self.high_cmd_msg = data 
 
+    def initialized(self):
+        return (self.high_state_msg is not None) and (self.high_cmd_msg is not None)
+
     def append_msgs(self):
         self.high_cmds.append(self.high_cmd_msg)
         self.high_states.append(self.high_state_msg)
-        print('msgs appended')
+        print('state_msgs: {}, cmd_msgs: {}'.format(len(self.high_cmds), len(self.high_states)))
 
     def run(self):
         while not rospy.is_shutdown():
