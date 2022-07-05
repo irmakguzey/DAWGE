@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # This script will run inside the robot - saving the stream will run in bangalore
 
@@ -23,8 +23,8 @@ class RealSenseStream(object):
         np.set_printoptions(suppress=True)
 
         # Creating ROS Publishers
-        self.color_image_publisher = rospy.Publisher('/camera/color/image_raw', Image, queue_size = 1)
-        self.depth_image_publisher = rospy.Publisher('/camera/depth/image_rect_raw', Image, queue_size = 1)
+        self.color_image_publisher = rospy.Publisher('/dawge_camera/color/image_raw', Image, queue_size = 1)
+        self.depth_image_publisher = rospy.Publisher('/dawge_camera/depth/image_raw', Image, queue_size = 1)
 
         # Initializing CvBridge
         self.bridge = CvBridge()
@@ -49,8 +49,8 @@ class RealSenseStream(object):
         # are always getting the error that requests cannot be resolved
 
         # # Starting the pipeline
-        cfg = pipeline.start(config)
-        # cfg = pipeline.start()
+        # cfg = pipeline.start(config)
+        cfg = pipeline.start()
         device = cfg.get_device()
 
         # Setting the depth mode to high accuracy mode

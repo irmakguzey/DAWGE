@@ -62,8 +62,8 @@ class SaveStream: # Class to save image streams
         # stamp = rospy.get_rostime()
         # img_name = float('{}.{:09d}'.format(stamp.secs, stamp.nsecs))
 
-        color_img_path = os.path.join(self.color_video_dir, 'frame_{}.jpg'.format(self.frame))
-        depth_img_path = os.path.join(self.depth_video_dir, 'frame_{}.jpg'.format(self.frame))
+        color_img_path = os.path.join(self.color_video_dir, 'frame_{:04d}.jpg'.format(self.frame))
+        depth_img_path = os.path.join(self.depth_video_dir, 'frame_{:04d}.jpg'.format(self.frame))
 
         color_cv2_img = self.cv_bridge.imgmsg_to_cv2(self.color_img_msg, "bgr8") # It published as bgr8 so the saving should be bgr to make it rgb again
         depth_cv2_img = self.cv_bridge.imgmsg_to_cv2(self.depth_img_msg)
@@ -91,7 +91,7 @@ class SaveStream: # Class to save image streams
                 self.depth_video_dir,
                 depth_video_name
             ))
-        # shutil.rmtree(self.depth_video_dir, ignore_errors=True)
+            # shutil.rmtree(self.depth_video_dir, ignore_errors=True)
 
         after_dumping = datetime.now()
         time_spent = after_dumping - before_dumping

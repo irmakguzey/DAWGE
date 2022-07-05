@@ -35,10 +35,12 @@ class AnimatePosFrame:
 
         # Set the axes
         self.line, = self.axs.plot([], [])
+        self.dir = 0
+        self.fps = fps
         self.pos = np.zeros((num_frames, 2)) # This will be filled with forward and side position
-        self.axs.set_ylim(-1, 4)
-        self.axs.set_xlim(-4, 4)
-        self.axs.set_title("State Position")
+        self.axs.set_ylim(-0.5, 3)
+        self.axs.set_xlim(-0.5, 2)
+        self.axs.set_title("Given Commands")
 
         # Create the animation object and save it
         self.anim = FuncAnimation(
@@ -52,15 +54,29 @@ class AnimatePosFrame:
         return self.line,
 
     def animate(self, i):
-        self.pos[i][0] = self.states[i].sidePosition
-        self.pos[i][1]= self.states[i].forwardPosition
 
+        rotate_speed = self.commands[i].rotateSpeed / self.fps # Since the velocity is given in m/s (or rad/s)
+        forward_speed = self.commands[i].forwardSpeed / self.fps
+
+        self.dir -= rotate_speed
+
+        action_x = forward_speed * math.sin(self.dir)
+        action_y = forward_speed * math.cos(self.dir)
+        
+        if i > 0:
+            self.pos[i][0] = self.pos[i-1][0] + action_x
+            self.pos[i][1] = self.pos[i-1][1] + action_y
+        else:
+            self.pos[i][0] = action_x
+            self.pos[i][1] = action_y
+        print(f'Frame: {i} - pos: (x={self.pos[i][0]}, y={self.pos[i][1]})')
+        
         self.line.set_data(self.pos[:i,0], self.pos[:i,1])
 
         return self.line,
 
 if __name__ == "__main__":
-    demo_name = 'box_a_3'
+    demo_name = 'box_b_3'
     data_dir = '/home/irmak/Workspace/DAWGE/src/dawge_planner/data/{}'.format(demo_name)
     dump_dir = '/home/irmak/Workspace/DAWGE/contrastive_learning/tests'
     dump_file = '{}_test.mp4'.format(demo_name)

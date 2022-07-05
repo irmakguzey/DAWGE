@@ -20,8 +20,8 @@ class SaveAll:
 
         self.video_saver = SaveStream(
             video_dir=video_dir,
-            depth_img_topic='/camera/depth/image_rect_raw',
-            color_img_topic='/camera/color/image_raw',
+            depth_img_topic='/dawge_camera/depth/image_raw',
+            color_img_topic='/dawge_camera/color/image_raw',
             cam_fps=fps
         )      
 
