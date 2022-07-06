@@ -11,7 +11,7 @@ from unitree_legged_msgs.msg import HighCmd
 
 # Dumping video to images
 # Creating pickle files to pick images
-def dump_video_to_images(root : str, video_type='color') -> None:
+def dump_video_to_images(root : str, video_type: str ='color') -> None:
     # Convert the video into image sequences and name them with the frames
 
     video_path = os.path.join(root, f'videos/{video_type}_video.mp4') # TODO: this will be taken from cfg.data_dir
@@ -36,7 +36,11 @@ def dump_video_to_images(root : str, video_type='color') -> None:
 
     print(f'dumping finished in {root}')
 
-def create_pos_pairs(data_dir : str, video_type='color', frame_interval: int = 5) -> None:
+def create_pos_pairs(data_dir: str,
+                     frame_interval: int,
+                     get_action_mean_std: bool = False,
+                     video_type: str ='color') -> None:
+
     images_folder = os.path.join(data_dir, f'videos/{video_type}_images')
     image_names = glob.glob(os.path.join(images_folder, 'frame_*.jpg'))
     image_names = sorted(image_names)
@@ -71,12 +75,13 @@ def create_pos_pairs(data_dir : str, video_type='color', frame_interval: int = 5
             break
         i = j
 
+    print(f"Data Dir: {data_dir.split('/')[-1]}, Data Length: {len(pos_pairs)}")
+
     with open(os.path.join(data_dir, f'{video_type}_pos_pairs.pkl'), 'wb') as f:
         pickle.dump(pos_pairs, f) # These pos_pairs files are used in dataset
 
 def cmds_are_same(cmd_a: HighCmd, cmd_b: HighCmd) -> None: # Gets high level commands and compares forwardSpeed and rotateSpeed
     return cmd_a.forwardSpeed == cmd_b.forwardSpeed and cmd_a.rotateSpeed == cmd_b.rotateSpeed
-
 
 if __name__ == "__main__":
     data_dir = "/home/irmak/Workspace/DAWGE/src/dawge_planner/data/box_a_1"
