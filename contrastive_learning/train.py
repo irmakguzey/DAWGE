@@ -56,7 +56,7 @@ class Workspace:
 
         # Get dataloaders
         # TODO: maybe create the datasets in the configs
-        train_loader, test_loader = get_dataloaders(self.cfg) # Sizes of train and  val loaders will be different
+        train_loader, test_loader, _, _ = get_dataloaders(self.cfg) # Sizes of train and  val loaders will be different
 
         # Initialize the encoder and the trans
         encoder = hydra.utils.instantiate(self.cfg.encoder).to(device)
