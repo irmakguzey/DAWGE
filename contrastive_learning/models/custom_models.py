@@ -19,9 +19,9 @@ class Transition(nn.Module):
         hidden_dim = 64
         self.model = nn.Sequential(
             nn.Linear(z_dim + action_dim, hidden_dim),
-            nn.ReLU(),
+            nn.ReLU(inplace=False),
             nn.Linear(hidden_dim, hidden_dim),
-            nn.ReLU(),
+            nn.ReLU(inplace=False),
             nn.Linear(hidden_dim, z_dim)
         )
         

@@ -1,0 +1,3 @@
+_target_: contrastive_learning.models.custom_models.Transition
+z_dim: ???
+action_dim: ??? 

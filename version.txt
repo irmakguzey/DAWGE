@@ -50,3 +50,9 @@ Version 1.2.0
 - Contrastive Learning added
 - It is not complete yet when it's complete version will go up to 2.0.0
 - Bangalore will be formatted
+
+---------- 
+
+Version 2.0.0
+- First training model is working with distributed system using hydra
+- Data is collected 

@@ -1,14 +1,9 @@
 # File for encoder + trans trained with infonce loss
 # Forward model config
 _target_: contrastive_learning.models.agents.cpn.CPN
-encoder: 
-  _target_: contrastive_learning_models.pretrained_models.resnet18
-  pretrained: true
-trans:
-  _target_: contrastive_learning_models.custom_models.Transition
-  z_dim: ???
-  action_dim: ??? 
-z_dim: 64
-action_dim: 2
 loss_fn: infonce
-optimizer: adam
+# z_dim: ???
+# action_dim: ???
+encoder: ???
+trans: ???
+optimizer: ???

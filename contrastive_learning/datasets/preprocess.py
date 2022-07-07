@@ -49,7 +49,7 @@ def create_pos_pairs(data_dir: str,
     with open(os.path.join(data_dir, 'commands.pickle'), 'rb') as f:
         commands = pickle.load(f)
 
-    print('len(commands): {}, len(image_names): {}'.format(len(commands), len(image_names)))
+    # print('len(commands): {}, len(image_names): {}'.format(len(commands), len(image_names)))
     assert len(commands) == len(image_names), "Commands and images don't have the same size"
 
     # NOTE: Sometimes image_names has a larger size by 1 but we can just get the minimum size
@@ -75,7 +75,7 @@ def create_pos_pairs(data_dir: str,
             break
         i = j
 
-    print(f"Data Dir: {data_dir.split('/')[-1]}, Data Length: {len(pos_pairs)}")
+    # print(f"Data Dir: {data_dir.split('/')[-1]}, Data Length: {len(pos_pairs)}")
 
     with open(os.path.join(data_dir, f'{video_type}_pos_pairs.pkl'), 'wb') as f:
         pickle.dump(pos_pairs, f) # These pos_pairs files are used in dataset

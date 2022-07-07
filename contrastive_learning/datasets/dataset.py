@@ -71,7 +71,7 @@ class Dataset:
         return self.__getitem__(index) # This is to make this method public so that it can be used in animation class 
 
     def calculate_action_mean_std(self):
-        print("Calculating action mean and std")
+        # print("Calculating action mean and std")
         actions = np.zeros((len(self.pos_pairs), 2))
         for i in range(len(self.pos_pairs)):
             _, _, action = self.pos_pairs[i]
@@ -80,7 +80,7 @@ class Dataset:
         action_std = actions.std(axis=0)
         action_mean = actions.mean(axis=0)
 
-        print(f"Actions Mean: {action_mean}, Std: {action_std}")
+        # print(f"Actions Mean: {action_mean}, Std: {action_std}")
 
         return action_mean, action_std
 
@@ -121,7 +121,7 @@ def plot_data(data_dir:str, frame_interval:int, num_images:int = 16) -> None:
                                     num_workers=4, sampler=None)
     val_loader = data.DataLoader(val_dset, batch_size=1, shuffle=True,
                                     num_workers=4, sampler=None)
-    print(f"Train Dataset Size: {len(train_dset)}, Test Dataset Size: {len(val_dset)}, Train Loader Size: {len(train_loader)}, Test Loader Size: {len(val_loader)}")
+    # print(f"Train Dataset Size: {len(train_dset)}, Test Dataset Size: {len(val_dset)}, Train Loader Size: {len(train_loader)}, Test Loader Size: {len(val_loader)}")
 
 
     # Inverse transform to negate normalization in images
@@ -137,7 +137,7 @@ def plot_data(data_dir:str, frame_interval:int, num_images:int = 16) -> None:
         if i >= num_images:
             break
         obs, obs_next, action = [b for b in batch]
-        print('action: {}'.format(action))
+        # print('action: {}'.format(action))
         obs, obs_next = inv_trans(obs).numpy(), inv_trans(obs_next).numpy()
         obs = utils.add_arrow(obs, action[0])
         
