@@ -1,2 +1,2 @@
 _target_: contrastive_learning.models.pretrained_models.resnet18
-pretrained: true
+pretrained: false

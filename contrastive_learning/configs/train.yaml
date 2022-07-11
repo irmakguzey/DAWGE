@@ -6,7 +6,7 @@ defaults:
     - optimizer: adam
 
 # this needs to be specified manually
-experiment: test_exp
+experiment: resnet18_mlp_pretrained_false
 
 seed: 42
 device: cuda

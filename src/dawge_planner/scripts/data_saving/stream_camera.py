@@ -67,6 +67,7 @@ class RealSenseStream(object):
             [0, intrinsics.fy, intrinsics.ppy], 
             [0, 0, 1]
         ])
+        print('intrinsics: {}'.format(intrinsics))
 
         # Align function - aligns other frames with the color frame
         self.align = rs.align(rs.stream.color)

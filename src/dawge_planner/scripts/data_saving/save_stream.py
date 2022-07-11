@@ -16,7 +16,7 @@ from datetime import datetime
 from sensor_msgs.msg import Image # Image data will be taken - cv2 bridge can also be used to invert these but for now 
 
 class SaveStream: # Class to save image streams
-    def __init__(self, video_dir, color_img_topic, depth_img_topic=None, cam_fps=15):
+    def __init__(self, video_dir, color_img_topic, depth_img_topic=None, fps=15):
         '''
         video_dir: directory to dump all the images before converting it to a video - it should be created before
         '''
@@ -27,7 +27,7 @@ class SaveStream: # Class to save image streams
         self.color_img_msg = None
         self.depth_img_msg = None
 
-        self.video_fps = cam_fps
+        self.video_fps = fps
         self.video_dir = video_dir # This is the path where the final videos should be dumped
         self.color_video_dir = os.path.join(video_dir, 'color_images') # Will be used in the actual dumping
         if not os.path.exists(self.color_video_dir):
@@ -120,7 +120,7 @@ if __name__ == '__main__':
         # depth_img_topic='/dawge_camera/depth_image'
         depth_img_topic='/camera/depth/image_rect_raw',
         color_img_topic='/camera/color/image_raw',
-        cam_fps=15
+        fps=15
     ) 
 
     data_saver.run()

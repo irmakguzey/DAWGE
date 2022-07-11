@@ -6,7 +6,7 @@ import random
 import torch
 import torch.utils.data as data 
 
-from omegaconf import DictConfig
+from omegaconf import DictConfig, OmegaConf
 from PIL import Image
 from torchvision import transforms
 from torchvision.datasets.folder import default_loader as loader 
@@ -139,7 +139,7 @@ def plot_data(data_dir:str, frame_interval:int, num_images:int = 16) -> None:
         obs, obs_next, action = [b for b in batch]
         # print('action: {}'.format(action))
         obs, obs_next = inv_trans(obs).numpy(), inv_trans(obs_next).numpy()
-        obs = utils.add_arrow(obs, action[0])
+        # obs = utils.add_arrow(obs, action[0])
         
         imgs[2*i,:] = obs[:]
         imgs[2*i+1,:] = obs_next[:]
@@ -150,7 +150,7 @@ def plot_data(data_dir:str, frame_interval:int, num_images:int = 16) -> None:
 
 
 if __name__ == "__main__":
-    data_dir = "/home/irmak/Workspace/DAWGE/src/dawge_planner/data"
-    plot_data(data_dir, 8)
+    cfg = OmegaConf.load('/home/irmak/Workspace/DAWGE/contrastive_learning/configs/train.yaml')
+    plot_data(cfg.data_dir, cfg.frame_interval)
 
 

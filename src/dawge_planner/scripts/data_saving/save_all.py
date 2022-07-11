@@ -9,6 +9,7 @@ from datetime import datetime
 
 from save_stream import SaveStream
 from save_robot import SaveRobotCmds
+from save_markers import SaveMarkers
 
 class SaveAll:
     def __init__(self, data_dir, fps):
@@ -22,13 +23,20 @@ class SaveAll:
             video_dir=video_dir,
             depth_img_topic='/dawge_camera/depth/image_raw',
             color_img_topic='/dawge_camera/color/image_raw',
-            cam_fps=fps
+            fps=fps
         )      
 
         self.robot_saver = SaveRobotCmds(
             data_dir=data_dir,
             high_cmd_topic="dawge_high_cmd",
             high_state_topic="dawge_high_state",
+            fps=fps
+        )
+
+        self.marker_saver = SaveMarkers(
+            data_dir=data_dir,
+            color_img_topic='/dawge_camera/color/image_raw',
+            color_marker_topic='/dawge_camera/color/image_markers',
             fps=fps
         )
 
@@ -44,6 +52,7 @@ class SaveAll:
                 self.frame_count += 1
                 self.video_saver.dump_images() # Sends dumps the last received images
                 self.robot_saver.append_msgs() # Saves the last received high command
+                self.marker_saver.draw_and_dump() # Draws the markers to the current image and dumps them
                 print(f'Frame: {self.frame_count}')
             else:
                 print(f"Waiting for frames! - video_saver.init: {self.video_saver.initialized()} - robot_saver.init: {self.robot_saver.initialized()}")
@@ -52,6 +61,8 @@ class SaveAll:
     def end_signal_handler(self, signum, frame):
         self.video_saver.convert_to_video()
         self.robot_saver.dump()
+        self.marker_saver.convert_to_video() # Dump markered video and the corners and ids of the markers
+        self.marker_saver.dump_corners()
         rospy.signal_shutdown('Ctrl C pressed')
         exit(1)
 

@@ -147,3 +147,6 @@ src/dawge_planner/data
 contrastive_learning/out
 
 wandb
+
+# aruco_markers/data
+src/dawge_planner/scripts/aruco_markers/data
