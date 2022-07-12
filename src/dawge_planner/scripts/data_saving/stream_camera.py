@@ -42,15 +42,14 @@ class RealSenseStream(object):
         config.enable_device(cam_serial_num)
 
         # Enabling camera streams
-        config.enable_stream(rs.stream.color, width, height, rs.format.bgr8, fps)
+        config.enable_stream(rs.stream.color, width, height, rs.format.rgb8, fps)
         config.enable_stream(rs.stream.depth, width, height, rs.format.z16, fps)
 
         # TODO: Fix this - maybe it will be fixed with USB3 cable but rn with these configs we
         # are always getting the error that requests cannot be resolved
 
         # # Starting the pipeline
-        # cfg = pipeline.start(config)
-        cfg = pipeline.start()
+        cfg = pipeline.start(config)
         device = cfg.get_device()
 
         # Setting the depth mode to high accuracy mode
@@ -120,11 +119,11 @@ class RealSenseStream(object):
 if __name__ == "__main__":
     # cam_serial_num = "109622072273" # This is the one on the robot
     cam_serial_num = "023422073116" # The one on bangalore
-    height, width = (480, 640) # TODO: these are not being used rn - you might wanna fix these
+    height, width = (720, 1280) # TODO: these are not being used rn - you might wanna fix these
     print("Starting to setup camera: {}.".format(cam_serial_num))
     camera = RealSenseStream(
         cam_serial_num = cam_serial_num,
-        resolution = (height, width),
-        cam_fps = 15
+        resolution = (width, height),
+        cam_fps = 30
     )
     camera.stream()

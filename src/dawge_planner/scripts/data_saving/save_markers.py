@@ -43,6 +43,7 @@ class SaveMarkers: # Class to save image streams
 
         # Each corner and id should be saved for each frame
         self.corners, self.ids = [], []
+        self.id_imgs_init = False # Boolean to plot or set_data while plotting ids of the markers
 
         self.camera_intrinsics = np.array([[612.82019043,   0.        , 322.14050293],
                               [  0.        , 611.48303223, 247.9083252 ],
@@ -62,7 +63,7 @@ class SaveMarkers: # Class to save image streams
         while not rospy.is_shutdown():
             if self.initialized():
                 frame_axis = self.draw_markers() # Draws the markers to the current image
-                # Publish the new image
+                # Publish the new image - save_all.py doesn't do this
                 self.pub_marker_image(frame_axis)
                 # Dump the images
                 self.dump_images()
@@ -84,14 +85,14 @@ class SaveMarkers: # Class to save image streams
         aruco_dict = aruco.Dictionary_get(aruco.DICT_6X6_250)
         parameters =  aruco.DetectorParameters_create()
         self.curr_corners, self.curr_ids, _ = aruco.detectMarkers(gray, aruco_dict, parameters=parameters)
-        print('type(corners): {}'.format(type(self.curr_corners)))
+
         # Draw markers and axis
         frame_markers = aruco.drawDetectedMarkers(color_cv2_img.copy(), self.curr_corners)
         frame_axis = frame_markers.copy()
         for i in range(len(self.curr_corners)):
             rvec, tvec, _ = aruco.estimatePoseSingleMarkers(self.curr_corners[i], 0.01,
-                                                                    self.camera_intrinsics,
-                                                                    self.distortion_coefficients)
+                                                            self.camera_intrinsics,
+                                                            self.distortion_coefficients)
             if i == 0:
                 frame_axis = aruco.drawAxis(frame_markers.copy(), self.camera_intrinsics, self.distortion_coefficients, rvec, tvec, 0.01)
             else:
@@ -100,17 +101,21 @@ class SaveMarkers: # Class to save image streams
         # Plot the frame axis
         if self.frame == 0:
             self.img = plt.imshow(frame_axis)
-            for i in range(len(self.curr_corners)):
-                c = self.curr_corners[i][0]
-                self.id_imgs = plt.plot([c[:, 0].mean()], [c[:, 1].mean()], "o", label = "id={0}".format(self.curr_ids[i]))
-            plt.legend()
-            print('self.id_imgs: {}'.format(self.id_imgs))
         else:
             self.img.set_data(frame_axis)
+            
+        # Plot the ids 
+        # if len(self.curr_corners) > 0 and (not self.id_imgs_init):
+        #     for i in range(len(self.curr_corners)):
+        #         c = self.curr_corners[i][0]
+        #         self.id_imgs = plt.plot([c[:, 0].mean()], [c[:, 1].mean()], "o", label = "id={0}".format(self.curr_ids[i]))
+        #     plt.legend()
+        #     self.id_imgs_init = True
 
-            for i in range(len(self.curr_corners)):
-                c = self.curr_corners[i][0]
-                self.id_imgs[0].set_data([c[:, 0].mean()], [c[:, 1].mean()])
+        # if self.id_imgs_init:
+        #     for i in range(len(self.curr_corners)):
+        #         c = self.curr_corners[i][0]
+        #         self.id_imgs[0].set_data([c[:, 0].mean()], [c[:, 1].mean()])
 
         return frame_axis
 

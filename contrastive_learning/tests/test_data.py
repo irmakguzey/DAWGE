@@ -5,9 +5,12 @@ import matplotlib
 import math
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+import matplotlib.patches as patches
 import numpy as np
 import os
 import pickle
+
+from cv2 import aruco
 
 from unitree_legged_msgs.msg import HighCmd, HighState
 
@@ -75,14 +78,134 @@ class AnimatePosFrame:
 
         return self.line,
 
+class AnimateMarkers:
+    def __init__(self, data_dir, dump_dir, dump_file, fps):
+        # Create the figure to draw
+        self.fig, self.axs = plt.subplots(figsize=(15,15), nrows=1, ncols=1)
+
+        # Create the dump dir if it doesn't exist
+        os.makedirs(dump_dir, exist_ok=True)
+
+        # Load the data
+        with open(os.path.join(data_dir, 'marker_corners.pickle'), 'rb') as f:
+            self.corners = pickle.load(f)
+        with open(os.path.join(data_dir, 'marker_ids.pickle'), 'rb') as f:
+            self.ids = pickle.load(f)
+        with open(os.path.join(data_dir, 'commands.pickle'), 'rb') as f:
+            self.commands = pickle.load(f)
+        
+        print(f'len(self.ids): {len(self.ids)}, len(self.commands): {len(self.commands)}')
+
+        self.camera_intrinsics = np.array([[612.82019043,   0.        , 322.14050293],
+                              [  0.        , 611.48303223, 247.9083252 ],
+                              [  0.        ,   0.        ,   1.        ]])
+        self.distortion_coefficients = np.zeros((5))
+
+        # print(self.corners[0]) # First element of corners will always be non None
+
+        # NOTE: ID Checking should be made
+        # Averaging corners 
+        i = 0
+        j = 1
+        while j < len(self.corners):
+            while j < len(self.corners)-1 and len(self.corners[j]) == 0:
+                j += 1
+            
+            print('i: {}, j: {}'.format(i, j))
+            print('self.ids[i]: {}, self.ids[j]: {}'.format(self.ids[i], self.ids[j]))
+            # Traverse from i to j in self.corners and put each step difference
+            prev_corners = self.corners[i] # We know that both of them at least have one corner 
+            next_corners = self.corners[j] # if one of them has two then second one will be appended to all of them
+            interval = j - i
+            for curr_cor in range(i+1,j):
+
+                for k in range(min(len(prev_corners), len(next_corners))):
+                    curr_step = (next_corners[k][0,:] - prev_corners[k][0,:]) / interval 
+                    print('curr_step: {}'.format(curr_step))
+
+                    if self.ids[i][k] == self.ids[j][k]: # If the ids are swapped in the middle that makes no sense 
+                        # print(self.corners[curr_cor])
+                        self.corners[curr_cor].append(self.corners[curr_cor-1][k] + curr_step)
+
+                if len(prev_corners) > len(next_corners): # If in ith step there were more detected markers just reflect that marker to all interval
+                    self.corners[curr_cor].append(prev_corners[-1])
+                elif len(next_corners) > len(prev_corners): # If in jth step there were more detected markers
+                    self.corners[curr_cor].append(next_corners[-1])
+
+            i = j
+            j += 1
+
+        for corner in self.corners:
+            print(f'{corner}\n-----')
+        
+        last_non_empty_corner = None
+        min_x, min_y, max_x, max_y = 0,0,0,0
+        for i in range(len(self.corners)):
+            if len(self.corners[i]) > 0:
+                last_non_empty_corner = self.corners[i].copy()
+            else:
+                self.corners[i] = last_non_empty_corner.copy()
+
+            if min(self.corners[i][0][0,:,0]) < min_x: 
+                min_x = min(self.corners[i][0][0,:,0])
+            if max(self.corners[i][0][0,:,0]) > max_x: 
+                max_x = max(self.corners[i][0][0,:,0])
+
+            if min(self.corners[i][0][0,:,1]) < min_y: 
+                min_y = min(self.corners[i][0][0,:,1])
+            if max(self.corners[i][0][0,:,1]) > max_y: 
+                max_y = max(self.corners[i][0][0,:,1])
+
+        for i,corners in enumerate(self.corners):
+            rvec, tvec, markerPoints = aruco.estimatePoseSingleMarkers(corners, 0.01,
+                                                                       self.camera_intrinsics,
+                                                                       self.distortion_coefficients)
+            print('corners:\n{}\nrvec:\n{}\ntvec:\n{}\n----'.format(
+                corners, rvec, tvec
+            ))
+
+        # Set the axes
+        num_frames = len(self.corners)
+        self.line, = self.axs.plot([], [])
+        self.dir = 0
+        self.fps = fps
+        # self.pos = np.zeros((len(self.corners), 2)) # This will be filled with forward and side position
+        self.axs.set_ylim(min_y, max_y)
+        self.axs.set_xlim(min_x, max_x)
+        self.axs.set_title("Predicted Markers")
+
+        # Create the animation object and save it
+        self.anim = FuncAnimation(
+            self.fig, self.animate, init_func = self.init_fun, frames = num_frames
+        )
+        self.anim.save(os.path.join(dump_dir, dump_file), fps=fps, extra_args=['-vcodec', 'libx264'])
+        print('Animation saved to: {}'.format(dump_file))
+
+    def init_fun(self):
+        self.line.set_data([], [])
+        return self.line,
+
+    def animate(self, i):
+        self.axs.patches = []
+        for j in range(len(self.corners[i])):
+            curr_polygon = self.corners[i][j][0,:]
+            if j == 0:
+                p = patches.Polygon(curr_polygon, edgecolor='r', facecolor='none')
+            else:
+                p = patches.Polygon(curr_polygon, edgecolor='g', facecolor='none')
+            self.axs.add_patch(p)
+
+        return self.line,
+
+
 if __name__ == "__main__":
-    demo_name = 'box_b_3'
+    demo_name = 'box_marker_21'
     data_dir = '/home/irmak/Workspace/DAWGE/src/dawge_planner/data/{}'.format(demo_name)
     dump_dir = '/home/irmak/Workspace/DAWGE/contrastive_learning/tests'
     dump_file = '{}_test.mp4'.format(demo_name)
     fps = 15
 
-    AnimatePosFrame(
+    AnimateMarkers(
         data_dir = data_dir, 
         dump_dir = dump_dir, 
         dump_file = dump_file, 
