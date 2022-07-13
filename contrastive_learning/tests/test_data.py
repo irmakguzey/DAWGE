@@ -58,8 +58,8 @@ class AnimatePosFrame:
 
     def animate(self, i):
 
-        rotate_speed = self.commands[i].rotateSpeed / self.fps # Since the velocity is given in m/s (or rad/s)
-        forward_speed = self.commands[i].forwardSpeed / self.fps
+        rotate_speed = self.commands[i].rotateSpeed / (self.fps/3) # Since the velocity is given in m/s (or rad/s)
+        forward_speed = self.commands[i].forwardSpeed / (self.fps/3) # NOTE: /3 should be deleted normally
 
         self.dir -= rotate_speed
 
@@ -156,13 +156,13 @@ class AnimateMarkers:
             if max(self.corners[i][0][0,:,1]) > max_y: 
                 max_y = max(self.corners[i][0][0,:,1])
 
-        for i,corners in enumerate(self.corners):
-            rvec, tvec, markerPoints = aruco.estimatePoseSingleMarkers(corners, 0.01,
-                                                                       self.camera_intrinsics,
-                                                                       self.distortion_coefficients)
-            print('corners:\n{}\nrvec:\n{}\ntvec:\n{}\n----'.format(
-                corners, rvec, tvec
-            ))
+        # for i,corners in enumerate(self.corners):
+        #     rvec, tvec, markerPoints = aruco.estimatePoseSingleMarkers(corners, 0.01,
+        #                                                                self.camera_intrinsics,
+        #                                                                self.distortion_coefficients)
+        #     print('corners:\n{}\nrvec:\n{}\ntvec:\n{}\n----'.format(
+        #         corners, rvec, tvec
+        #     ))
 
         # Set the axes
         num_frames = len(self.corners)
@@ -186,20 +186,36 @@ class AnimateMarkers:
         return self.line,
 
     def animate(self, i):
+        # self.axs.patches = []
+        # for j in range(len(self.corners[i])):
+        #     curr_polygon = self.corners[i][j][0,:]
+        #     if j == 0:
+        #         p = patches.Polygon(curr_polygon, edgecolor='r', facecolor='none')
+        #     else:
+        #         p = patches.Polygon(curr_polygon, edgecolor='g', facecolor='none')
+        #     self.axs.add_patch(p)
+
+        # Draw two axes, axes are represented by two arrows starting from the middle of the 
+        # rectangles and go to the right top and left corners
         self.axs.patches = []
         for j in range(len(self.corners[i])):
-            curr_polygon = self.corners[i][j][0,:]
-            if j == 0:
-                p = patches.Polygon(curr_polygon, edgecolor='r', facecolor='none')
-            else:
-                p = patches.Polygon(curr_polygon, edgecolor='g', facecolor='none')
-            self.axs.add_patch(p)
+            curr_polygon = self.corners[i][j][0,:,:]
+            mean_x, mean_y = curr_polygon[:, 0].mean(), curr_polygon[:, 1].mean()
+            right_top_x, right_top_y = curr_polygon[0,0], curr_polygon[0,1]
+            right_bot_x, right_bot_y = curr_polygon[1,0], curr_polygon[1,1]
+
+            blue_arr = patches.Arrow(mean_x, mean_y, right_top_x-mean_x, right_top_y-mean_y, color='b')
+            red_arr = patches.Arrow(mean_x, mean_y, right_bot_x-mean_x, right_bot_y-mean_y, color='r')
+            # self.axs.arrow(mean_x, mean_y, right_top_x-mean_x, right_top_y-mean_y, color='b')
+            # self.axs.arrow(mean_x, mean_y, right_bot_x-mean_x, right_bot_y-mean_y, color='r')
+            self.axs.add_patch(blue_arr)
+            self.axs.add_patch(red_arr)
 
         return self.line,
 
 
 if __name__ == "__main__":
-    demo_name = 'box_marker_21'
+    demo_name = 'box_marker_35'
     data_dir = '/home/irmak/Workspace/DAWGE/src/dawge_planner/data/{}'.format(demo_name)
     dump_dir = '/home/irmak/Workspace/DAWGE/contrastive_learning/tests'
     dump_file = '{}_test.mp4'.format(demo_name)
@@ -208,6 +224,13 @@ if __name__ == "__main__":
     AnimateMarkers(
         data_dir = data_dir, 
         dump_dir = dump_dir, 
-        dump_file = dump_file, 
+        dump_file = f'marker_{dump_file}', 
+        fps = fps
+    )
+
+    AnimatePosFrame(
+        data_dir = data_dir, 
+        dump_dir = dump_dir, 
+        dump_file = f'pos_{dump_file}', 
         fps = fps
     )
