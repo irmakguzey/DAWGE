@@ -1,6 +1,7 @@
 # Script to test the command files that are saved
 
 import cv2
+import glob
 import matplotlib
 import math
 matplotlib.use('Agg')
@@ -79,81 +80,36 @@ class AnimatePosFrame:
         return self.line,
 
 class AnimateMarkers:
-    def __init__(self, data_dir, dump_dir, dump_file, fps):
+    def __init__(self, data_dir, dump_dir, dump_file, fps, mult_traj=False):
         # Create the figure to draw
         self.fig, self.axs = plt.subplots(figsize=(15,15), nrows=1, ncols=1)
 
         # Create the dump dir if it doesn't exist
         os.makedirs(dump_dir, exist_ok=True)
 
-        # Load the data
-        with open(os.path.join(data_dir, 'marker_corners.pickle'), 'rb') as f:
-            self.corners = pickle.load(f)
-        with open(os.path.join(data_dir, 'marker_ids.pickle'), 'rb') as f:
-            self.ids = pickle.load(f)
-        with open(os.path.join(data_dir, 'commands.pickle'), 'rb') as f:
-            self.commands = pickle.load(f)
-        
-        print(f'len(self.ids): {len(self.ids)}, len(self.commands): {len(self.commands)}')
-
-        # Shape: (Frame Length, 2:Box and Dog, 4: 4 corners, 2: [x,y])
-        self.corners_np = np.zeros((len(self.corners), 2, 4, 2))
-        # First dump all the detected markers to corners_np
-        # Put -1 if one of them haven't come into the frame yet
-        for i in range(len(self.corners)):
-            for j in range(len(self.corners[i])): # Number of markers
-                if self.ids[i][j] == 1: # The id check is done here
-                    self.corners_np[i,0,:] = self.corners[i][j][0,:]
+        # When mult_traj is set to true data_dir is considered as multiple directories 
+        # and smoothened_corners in those multiple directories are concatenated
+        if mult_traj:
+            for i,root in enumerate(data_dir):
+                if i == 0:
+                    with open(os.path.join(root, 'smoothened_corners.npy'), 'rb') as f:
+                        self.corners_np = np.load(f)
                 else:
-                    self.corners_np[i,1,:] = self.corners[i][j][0,:]
+                    with open(os.path.join(root, 'smoothened_corners.npy'), 'rb') as f:
+                        curr_corner = np.load(f)
+                        self.corners_np = np.concatenate((self.corners_np, curr_corner))
+        else:
+            with open(os.path.join(data_dir, 'smoothened_corners.npy'), 'rb') as f:
+                self.corners_np = np.load(f) 
 
-
-        # Put -1 when the dog or the box hasn't come to the frame yet (in the beginning)
-        for i in range(len(self.corners_np)):
-            if self.corners_np[i,1,:].all() == 0: # Only way is the 2nd one is not initialized
-                self.corners_np[i,1,:] = -1
-            else:
-                break
-
-        # print('self.corners_np: {}'.format(self.corners_np))
-
-        # Traverse through the frames and average smoothen the all 0s
-        for marker in range(2):
-            prev_corner = None
-            for i in range(len(self.corners_np)):
-                if self.corners_np[i,marker,:].all() == 0 and self.corners_np[i-1,marker,:].all() != 0: # The first 0, create a loop
-                    # Find the next non zero index
-                    j = i 
-                    while self.corners_np[j,marker,:].all() == 0:
-                        j += 1
-                    step = (self.corners_np[j,marker,:] - self.corners_np[i-1,marker,:]) / (j-(i-1))
-                    for k in range(i,j):
-                        self.corners_np[k,marker,:] = self.corners_np[k-1,marker,:] + step
+        print(self.corners_np.shape)
         
-        print(self.corners_np)
-        
-        last_non_empty_corner = None
-        min_x, min_y, max_x, max_y = 0,0,0,0
-        for i in range(len(self.corners)):
-            if len(self.corners[i]) > 0:
-                last_non_empty_corner = self.corners[i].copy()
-            else:
-                self.corners[i] = last_non_empty_corner.copy()
-
-            if min(self.corners[i][0][0,:,0]) < min_x: 
-                min_x = min(self.corners[i][0][0,:,0])
-            if max(self.corners[i][0][0,:,0]) > max_x: 
-                max_x = max(self.corners[i][0][0,:,0])
-
-            if min(self.corners[i][0][0,:,1]) < min_y: 
-                min_y = min(self.corners[i][0][0,:,1])
-            if max(self.corners[i][0][0,:,1]) > max_y: 
-                max_y = max(self.corners[i][0][0,:,1])
+        min_x, max_x = np.min(self.corners_np[:,:,:,0]), np.max(self.corners_np[:,:,:,0])
+        min_y, max_y = np.min(self.corners_np[:,:,:,1]), np.max(self.corners_np[:,:,:,1])
 
         # Set the axes
-        num_frames = len(self.corners)
+        num_frames = len(self.corners_np)
         self.line, = self.axs.plot([], [])
-        self.dir = 0
         self.fps = fps
         self.axs.set_ylim(min_y, max_y)
         self.axs.set_xlim(min_x, max_x)
@@ -173,7 +129,6 @@ class AnimateMarkers:
     def animate(self, i):
         # Draw two axes, axes are represented by two arrows starting from the middle of the 
         # rectangles and go to the right top and left corners
-
         self.axs.patches = []
         for j in range(len(self.corners_np[i])):
             curr_polygon = self.corners_np[i,j,:]
@@ -196,17 +151,22 @@ class AnimateMarkers:
 
 
 if __name__ == "__main__":
-    demo_name = 'box_marker_35'
-    data_dir = '/home/irmak/Workspace/DAWGE/src/dawge_planner/data/{}'.format(demo_name)
+    # demo_name = 'box_marker_35'
+    # data_dir = '/home/irmak/Workspace/DAWGE/src/dawge_planner/data/{}'.format(demo_name)
+    # dump_dir = '/home/irmak/Workspace/DAWGE/contrastive_learning/tests'
+    # dump_file = '{}_test.mp4'.format(demo_name)
+    data_dirs = glob.glob("/home/irmak/Workspace/DAWGE/src/dawge_planner/data/box_marker_*")
     dump_dir = '/home/irmak/Workspace/DAWGE/contrastive_learning/tests'
-    dump_file = '{}_test.mp4'.format(demo_name)
+    dump_file = 'all_markers_test.mp4'
     fps = 15
 
     AnimateMarkers(
-        data_dir = data_dir, 
+        data_dir = data_dirs, 
         dump_dir = dump_dir, 
-        dump_file = f'marker_{dump_file}', 
-        fps = fps
+        # dump_file = f'marker_{dump_file}', 
+        dump_file = dump_file,
+        fps = fps,
+        mult_traj = True
     )
 
     # AnimatePosFrame(
