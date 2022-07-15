@@ -101,6 +101,8 @@ class AnimateMarkers:
         else:
             with open(os.path.join(data_dir, 'smoothened_corners.npy'), 'rb') as f:
                 self.corners_np = np.load(f) 
+            with open(os.path.join(data_dir, 'commands.pickle'), 'rb') as f:
+                self.commands = pickle.load(f) # Will be used to predict the actions
 
         print(self.corners_np.shape)
         
@@ -110,6 +112,8 @@ class AnimateMarkers:
         # Set the axes
         num_frames = len(self.corners_np)
         self.line, = self.axs.plot([], [])
+        self.dir_initialized = False # To set the direction as wanted
+        self.dir = 0 # Used to draw the action
         self.fps = fps
         self.axs.set_ylim(min_y, max_y)
         self.axs.set_xlim(min_x, max_x)
@@ -127,6 +131,7 @@ class AnimateMarkers:
         return self.line,
 
     def animate(self, i):
+
         # Draw two axes, axes are represented by two arrows starting from the middle of the 
         # rectangles and go to the right top and left corners
         self.axs.patches = []
@@ -142,31 +147,54 @@ class AnimateMarkers:
                 self.axs.add_patch(blue_arr)
                 self.axs.add_patch(red_arr)
             else:
-                blue_arr = patches.Arrow(mean_x, mean_y, right_top_x-mean_x, right_top_y-mean_y, color='g')
+                if self.dir_initialized == False:
+                    self.dir_initialized = True
+                    # Set the action direction
+                    front_x, front_y = ( right_top_x + right_bot_x ) / 2, ( right_top_y + right_bot_y ) / 2
+                    self.dir = np.arctan2(front_y-mean_y, front_x-mean_x )
+
+                rotate_speed = self.commands[i].rotateSpeed
+                forward_speed = self.commands[i].forwardSpeed 
+                self.dir += rotate_speed
+                action_x = forward_speed * math.sin(self.dir) * 250 # 250 is only for scaling
+                action_y = forward_speed * math.cos(self.dir) * 250
+
+
+                green_arr = patches.Arrow(mean_x, mean_y, right_top_x-mean_x, right_top_y-mean_y, color='g')
                 red_arr = patches.Arrow(mean_x, mean_y, right_bot_x-mean_x, right_bot_y-mean_y, color='r')
-                self.axs.add_patch(blue_arr)
+                action_arr = patches.Arrow(mean_x, mean_y, -action_x, -action_y, color='c') # - is for drawing purposes
+                self.axs.add_patch(green_arr)
                 self.axs.add_patch(red_arr)
+                self.axs.add_patch(action_arr)
 
         return self.line,
 
 
 if __name__ == "__main__":
-    # demo_name = 'box_marker_35'
-    # data_dir = '/home/irmak/Workspace/DAWGE/src/dawge_planner/data/{}'.format(demo_name)
-    # dump_dir = '/home/irmak/Workspace/DAWGE/contrastive_learning/tests'
-    # dump_file = '{}_test.mp4'.format(demo_name)
-    data_dirs = glob.glob("/home/irmak/Workspace/DAWGE/src/dawge_planner/data/box_marker_*")
+    demo_name = 'box_marker_35'
+    data_dir = '/home/irmak/Workspace/DAWGE/src/dawge_planner/data/{}'.format(demo_name)
     dump_dir = '/home/irmak/Workspace/DAWGE/contrastive_learning/tests'
-    dump_file = 'all_markers_test.mp4'
+    dump_file = '{}_test.mp4'.format(demo_name)
+
+    data_dirs = glob.glob("/home/irmak/Workspace/DAWGE/src/dawge_planner/data/box_marker_*")
+    dump_file_mult = 'all_markers_test.mp4'
     fps = 15
 
+    # AnimateMarkers(
+    #     data_dir = data_dirs, 
+    #     dump_dir = dump_dir, 
+    #     dump_file = dump_file_mult,
+    #     fps = fps,
+    #     mult_traj = True
+    # )
+
     AnimateMarkers(
-        data_dir = data_dirs, 
+        data_dir = data_dir, 
         dump_dir = dump_dir, 
-        # dump_file = f'marker_{dump_file}', 
-        dump_file = dump_file,
+        dump_file = f'marker_{dump_file}', 
+        # dump_file = dump_file,
         fps = fps,
-        mult_traj = True
+        mult_traj = False
     )
 
     # AnimatePosFrame(
