@@ -1,0 +1,4 @@
+_target_: contrastive_learning.models.agents.pli.PLI
+loss_fn: mse
+model: ???
+optimizer: ???

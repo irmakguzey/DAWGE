@@ -8,9 +8,9 @@ from tqdm import tqdm
 from torch.nn.parallel import DistributedDataParallel as DDP
 
 from contrastive_learning.models.pretrained_models import resnet18
+from contrastive_learning.models.custom_models import LinearInverse
 
 # Script to have methods for testing models
-
 # Method to take encoder and test_loader passes all of them through the encoder and save the 
 # representations in the given directory (create the directory if not exists)
 def save_all_embeddings(device, len_dset, z_dim, encoder, train_loader, out_dir):
@@ -68,3 +68,20 @@ def load_encoder(device, encoder_path, encoder_type:str):
     encoder = DDP(encoder.to(device), device_ids=[0])
 
     return encoder
+
+def load_lin_model(cfg, device, model_path):
+    lin_model = LinearInverse(cfg.pos_dim*2, cfg.action_dim, cfg.hidden_dim)
+    
+    state_dict = torch.load(model_path)
+    new_state_dict = OrderedDict()
+
+    for k, v in state_dict.items():
+        name = k[7:] # remove `module.`
+        new_state_dict[name] = v
+    # load params
+    lin_model.load_state_dict(new_state_dict)
+
+    # Turn it into DDP - it was saved that way
+    lin_model = DDP(lin_model.to(device), device_ids=[0])
+
+    return lin_model

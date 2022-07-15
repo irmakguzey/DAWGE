@@ -25,10 +25,8 @@ class Workspace:
     def __init__(self, cfg : DictConfig) -> None:
         print(f'Workspace config: {OmegaConf.to_yaml(cfg)}')
 
-        # # Initialize logger (wandb) TODO: uncomment these
+        # Initialize hydra
         self.hydra_dir = HydraConfig.get().run.dir
-        # wandb_exp_name = '-'.join(HydraConfig.get().run.dir.split('/')[-2:])
-        # self.logger = Logger(cfg, wandb_exp_name, simple_logger_file=os.path.join(HydraConfig.get().run.dir, 'train.log'))
 
         # Create the checkpoint directory - it will be inside the hydra directory
         cfg.checkpoint_dir = os.path.join(self.hydra_dir, 'models')
@@ -41,7 +39,6 @@ class Workspace:
         cfg.world_size = cfg.world_size * cfg.num_gpus
 
         # Set device and config
-        # self.device = torch.device(torch.device(f'cuda:0') if torch.cuda.is_available() else "cpu")
         self.cfg = cfg
 
     def train(self, rank) -> None:
@@ -85,8 +82,7 @@ class Workspace:
         # Logging
         if rank == 0:
             pbar = tqdm(total=self.cfg.train_epochs)
-            # Initialize logger (wandb) TODO: uncomment these
-            
+            # Initialize logger (wandb)
             wandb_exp_name = '-'.join(self.hydra_dir.split('/')[-2:])
             self.logger = Logger(self.cfg, wandb_exp_name, out_dir=self.hydra_dir)
 

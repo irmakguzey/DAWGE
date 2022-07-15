@@ -56,3 +56,10 @@ Version 1.2.0
 Version 2.0.0
 - First training model is working with distributed system using hydra
 - Data is collected 
+
+----------
+
+Version 2.1.0
+- PLI is implemented and tested
+- Dataset should be added as hydra 
+- Base class for agent initialization should be implemented
