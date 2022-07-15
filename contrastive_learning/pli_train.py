@@ -17,7 +17,7 @@ from tqdm import tqdm
 
 # Custom imports 
 from contrastive_learning.utils.logger import Logger
-from contrastive_learning.datasets.pli_dataset import get_dataloaders
+from contrastive_learning.datasets.state_dataset import get_dataloaders
 
 
 class Workspace:
@@ -53,11 +53,11 @@ class Workspace:
 
         # Get dataloaders
         # TODO: maybe create the datasets in the configs
-        train_loader, test_loader, _, _ = get_dataloaders(self.cfg) # Sizes of train and  val loaders will be different
+        train_loader, test_loader, _ = get_dataloaders(self.cfg) # Sizes of train and  val loaders will be different
 
         # Initialize the model
         model = hydra.utils.instantiate(self.cfg.model,
-                                        input_dim=self.cfg.pos_dim*2,
+                                        input_dim=self.cfg.pos_dim*2, # For dog and box
                                         action_dim=self.cfg.action_dim,
                                         hidden_dim=self.cfg.hidden_dim).to(device)
         model = DDP(model, device_ids=[rank], output_device=rank, broadcast_buffers=False)

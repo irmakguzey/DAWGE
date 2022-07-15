@@ -16,7 +16,7 @@ from torchvision.utils import save_image
 from contrastive_learning.datasets.preprocess import dump_video_to_images, create_pos_pairs
 import contrastive_learning.utils.utils as utils
 
-class Dataset:
+class VisualDataset:
     def __init__(self, data_dir: str,
                  frame_interval: int,
                  video_type: str = 'color') -> None:
@@ -87,7 +87,7 @@ class Dataset:
 
 def get_dataloaders(cfg : DictConfig):
     # Load dataset - splitting will be done with random splitter
-    dataset = Dataset(data_dir=cfg.data_dir, frame_interval=cfg.frame_interval, video_type=cfg.video_type)
+    dataset = VisualDataset(data_dir=cfg.data_dir, frame_interval=cfg.frame_interval, video_type=cfg.video_type)
 
     train_dset_size = int(len(dataset) * cfg.train_dset_split)
     test_dset_size = len(dataset) - train_dset_size
@@ -96,7 +96,6 @@ def get_dataloaders(cfg : DictConfig):
     train_dset, test_dset = data.random_split(dataset, 
                                              [train_dset_size, test_dset_size],
                                              generator=torch.Generator().manual_seed(cfg.seed))
-    print('len(train_dset): {}'.format(len(train_dset)))
     train_sampler = data.DistributedSampler(train_dset, drop_last=True, shuffle=True) if cfg.distributed else None
     test_sampler = data.DistributedSampler(test_dset, drop_last=True, shuffle=False) if cfg.distributed else None # val will not be shuffled
 
@@ -105,12 +104,12 @@ def get_dataloaders(cfg : DictConfig):
     test_loader = data.DataLoader(test_dset, batch_size=cfg.batch_size, shuffle=test_sampler is None,
                                     num_workers=cfg.num_workers, sampler=test_sampler)
 
-    return train_loader, test_loader, train_dset, test_dset
+    return train_loader, test_loader, dataset
 
 def plot_data(data_dir:str, frame_interval:int, num_images:int = 16) -> None:
 
     # Get the data loaders
-    dataset = Dataset(data_dir=data_dir, frame_interval=8)
+    dataset = VisualDataset(data_dir=data_dir, frame_interval=8)
     train_dset_size = int(len(dataset) * 0.8)
     val_dset_size = len(dataset) - train_dset_size
     # Random split the train and validation datasets

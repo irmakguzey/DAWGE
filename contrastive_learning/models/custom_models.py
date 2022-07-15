@@ -37,11 +37,11 @@ class LinearInverse(nn.Module):
     def __init__(self, input_dim, action_dim, hidden_dim):
         super().__init__()
         self.model = nn.Sequential(
-            nn.Linear(input_dim*2, hidden_dim),
+            nn.Linear(input_dim*2, hidden_dim), # input_dim*2: For current and next (so in total 32)
             nn.ReLU(),
-            nn.Linear(hidden_dim, hidden_dim),
+            nn.Linear(hidden_dim, int(hidden_dim/4)),
             nn.ReLU(),
-            nn.Linear(hidden_dim, action_dim)
+            nn.Linear(int(hidden_dim/4), action_dim)
         )        
 
     def forward(self, curr_pos, next_pos):

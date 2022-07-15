@@ -20,7 +20,6 @@ class CPN:
                  loss_fn: str # will be a string to indicate the loss function to be used
                  ) -> None:
         
-        # print(f'encoder: {encoder}, trans: {trans}, optimizer: {optimizer}, loss_fn: {loss_fn}')
         self.encoder = encoder 
         self.trans = trans 
         self.optimizer = optimizer 
@@ -61,7 +60,9 @@ class CPN:
             obs, obs_next, action = [b.to(self.device) for b in batch]
 
             # Get the loss - NOTE these parameters will need modificationafterwards
-            loss = self.loss_fn(self.encoder, self.trans, obs, obs_next, action)
+            z, z_next = self.encoder(obs), self.encoder(obs_next) # b x z_dim 
+            z_next_predict = self.trans(z, action)  # b x z_dim
+            loss = self.loss_fn(z, z_next, z_next_predict) # TODO: infonce was changed so you should check this
             train_loss += loss.item()
 
             # Back prop
@@ -82,7 +83,9 @@ class CPN:
         for batch in test_loader:
             obs, obs_next, action = [b.to(self.device) for b in batch]
             with torch.no_grad():
-                loss = self.loss_fn(self.encoder, self.trans, obs, obs_next, action)
+                z, z_next = self.encoder(obs), self.encoder(obs_next) # b x z_dim 
+                z_next_predict = self.trans(z, action)  # b x z_dim
+                loss = self.loss_fn(z, z_next, z_next_predict) # TODO: infonce was changed so you should check this
                 test_loss += loss.item()
 
         return test_loss / len(test_loader)

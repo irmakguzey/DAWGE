@@ -13,7 +13,7 @@ from omegaconf import DictConfig, OmegaConf
 from contrastive_learning.datasets.preprocess import smoothen_corners, dump_pos_corners
 # import contrastive_learning.utils.utils as utils
 
-class Dataset:
+class StateDataset:
     def __init__(self, data_dir: str) -> None:
 
         # Get the roots
@@ -76,7 +76,7 @@ class Dataset:
 
 def get_dataloaders(cfg : DictConfig):
     # Load dataset - splitting will be done with random splitter
-    dataset = Dataset(data_dir=cfg.data_dir)
+    dataset = StateDataset(data_dir=cfg.data_dir)
 
     train_dset_size = int(len(dataset) * cfg.train_dset_split)
     test_dset_size = len(dataset) - train_dset_size
@@ -98,7 +98,7 @@ def get_dataloaders(cfg : DictConfig):
 
 if __name__ == '__main__':
     cfg = OmegaConf.load('/home/irmak/Workspace/DAWGE/contrastive_learning/configs/train.yaml')
-    dset = Dataset(
+    dset = StateDataset(
         data_dir = cfg.data_dir
     )
 
