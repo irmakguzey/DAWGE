@@ -14,11 +14,14 @@ from contrastive_learning.datasets.preprocess import smoothen_corners, dump_pos_
 # import contrastive_learning.utils.utils as utils
 
 class StateDataset:
-    def __init__(self, data_dir: str) -> None:
+    def __init__(self, data_dir: str, single_dir=False) -> None:
 
         # Get the roots
-        roots = glob.glob(f'{data_dir}/box_marker_*') # TODO: change this in the future
-        roots = sorted(roots)
+        if not single_dir:
+            roots = glob.glob(f'{data_dir}/box_marker_*') # TODO: change this in the future
+            roots = sorted(roots)
+        else:
+            roots = [data_dir]
 
         # Preprocess data for all the roots
         # for root in roots:
@@ -27,7 +30,10 @@ class StateDataset:
 
         # Traverse through the data and append all pos_corners
         self.pos_corners = []
+        self.root_ids = {} # First id of the datas in the first root
+        self.received_ids = []
         for root in roots:
+            self.root_ids[root] = len(self.pos_corners)-1
             with open(os.path.join(root, 'pos_corners.pickle'), 'rb') as f:
                 self.pos_corners += pickle.load(f) # We need all pos_pairs in the same order when we retrieve the data
 
@@ -39,7 +45,7 @@ class StateDataset:
         return len(self.pos_corners)
 
     def __getitem__(self, index): 
-        # box_pos, dog_pos, next_box_pos, next_dog_pos, action = self.pos_corners[index]
+        self.received_ids.append(index)
         curr_pos, next_pos, action = self.pos_corners[index]
 
         # Normalize the positions
@@ -74,36 +80,23 @@ class StateDataset:
     def denormalize_action(self, action):
         return (action * self.action_std) + self.action_mean
 
-def get_dataloaders(cfg : DictConfig):
-    # Load dataset - splitting will be done with random splitter
-    dataset = StateDataset(data_dir=cfg.data_dir)
+    def get_root_id(self, root):
+        print('root: {}, root_id[root]: {}'.format(
+            root, self.root_ids[root]
+        ))
+        return self.root_ids[root]
 
-    train_dset_size = int(len(dataset) * cfg.train_dset_split)
-    test_dset_size = len(dataset) - train_dset_size
+    def get_received_ids(self):
+        return self.received_ids
 
-    # Random split the train and validation datasets
-    train_dset, test_dset = data.random_split(dataset, 
-                                             [train_dset_size, test_dset_size],
-                                             generator=torch.Generator().manual_seed(cfg.seed))
-    # print('len(train_dset): {}'.format(len(train_dset)))
-    train_sampler = data.DistributedSampler(train_dset, drop_last=True, shuffle=True) if cfg.distributed else None
-    test_sampler = data.DistributedSampler(test_dset, drop_last=True, shuffle=False) if cfg.distributed else None # val will not be shuffled
+# if __name__ == '__main__':
+#     cfg = OmegaConf.load('/home/irmak/Workspace/DAWGE/contrastive_learning/configs/train.yaml')
+#     dset = StateDataset(
+#         data_dir = cfg.data_dir
+#     )
 
-    train_loader = data.DataLoader(train_dset, batch_size=cfg.batch_size, shuffle=train_sampler is None,
-                                    num_workers=cfg.num_workers, sampler=train_sampler)
-    test_loader = data.DataLoader(test_dset, batch_size=cfg.batch_size, shuffle=test_sampler is None,
-                                    num_workers=cfg.num_workers, sampler=test_sampler)
+#     print(dset.getitem(0))
+#     print(len(dset))
 
-    return train_loader, test_loader, dataset
-
-if __name__ == '__main__':
-    cfg = OmegaConf.load('/home/irmak/Workspace/DAWGE/contrastive_learning/configs/train.yaml')
-    dset = StateDataset(
-        data_dir = cfg.data_dir
-    )
-
-    print(dset.getitem(0))
-    print(len(dset))
-
-    train_loader, test_loader, _, _ = get_dataloaders(cfg)
-    print(len(train_loader))
+#     train_loader, test_loader, _, _ = get_dataloaders(cfg)
+#     print(len(train_loader))

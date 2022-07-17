@@ -150,12 +150,9 @@ def dump_pos_corners(root: str):
     for i in valid_idx[:-1]:
         action = (commands[i].forwardSpeed, commands[i].rotateSpeed)
         pos_corners.append((
-            np.concatenate((smth_corners[i,0,:], smth_corners[i,1,:])), # Box position
-            np.concatenate((smth_corners[i+1,0,:], smth_corners[i+1,1,:])),
-            # smth_corners[i,1,:], # Dog position
-            # smth_corners[i+1,0,:], # Next box position
-            # smth_corners[i+1,1,:], # Next dog position
-            action
+            np.concatenate((smth_corners[i,0,:], smth_corners[i,1,:])), # Current box and dog position
+            np.concatenate((smth_corners[i+1,0,:], smth_corners[i+1,1,:])), # Next box and dog position
+            action # action
         ))
 
     with open(os.path.join(root, 'pos_corners.pickle'), 'wb') as f:
