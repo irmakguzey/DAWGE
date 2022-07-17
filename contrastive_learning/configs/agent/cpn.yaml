@@ -2,8 +2,6 @@
 # Forward model config
 _target_: contrastive_learning.models.agents.cpn.CPN
 loss_fn: infonce
-# z_dim: ???
-# action_dim: ???
 encoder: ???
 trans: ???
 optimizer: ???

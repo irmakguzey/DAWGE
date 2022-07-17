@@ -10,6 +10,20 @@ class PrintSize(nn.Module):
         print(x.shape)
         return x
 
+# Simple linear layer to map the positions to embeddings
+class PosToEmbedding(nn.Module): # Model to simply map raw positions to embeddings - it will be used in infonce loss with state based dataset
+    def __init__(self, input_dim, hidden_dim, out_dim): # Gets the posisionts 
+        super().__init__()
+        self.model = nn.Sequential(
+            nn.Linear(input_dim, hidden_dim),
+            nn.ReLU(inplace=False),
+            nn.Linear(hidden_dim, out_dim)
+        )
+
+    def forward(self, pos):
+        z = self.model(pos)
+        return z
+
 # Class for the forward linear model while calculating infonce loss
 class Transition(nn.Module):
     def __init__(self, z_dim, action_dim):

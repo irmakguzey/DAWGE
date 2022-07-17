@@ -18,7 +18,7 @@ from tqdm import tqdm
 # Custom imports 
 from contrastive_learning.utils.logger import Logger
 from contrastive_learning.datasets.dataloaders import get_dataloaders
-from contrastive_learning.models.agents.agent_inits import init_pli, init_cpn
+from contrastive_learning.models.agents.agent_inits import init_agent
 
 
 class Workspace:
@@ -52,39 +52,11 @@ class Workspace:
         device = torch.device(f'cuda:{rank}')
         print(f"INSIDE train: rank: {rank} - device: {device}")
 
-        # Get dataloaders
-        # TODO: maybe create the datasets in the configs
-        # train_loader, test_loader, _, _ = get_dataloaders(self.cfg) # Sizes of train and  val loaders will be different
-
-        # # Initialize the encoder and the trans
-        # encoder = hydra.utils.instantiate(self.cfg.encoder).to(device)
-        # trans = hydra.utils.instantiate(self.cfg.trans,
-        #                                 z_dim=self.cfg.z_dim,
-        #                                 action_dim=self.cfg.action_dim).to(device)
-        # encoder = DDP(encoder, device_ids=[rank], output_device=rank, broadcast_buffers=False) # To fix the inplace error https://github.com/pytorch/pytorch/issues/22095 
-        # trans = DDP(trans, device_ids=[rank], output_device=rank, broadcast_buffers=False)
-
-        # # Initialize the optimizer
-        # parameters = list(encoder.parameters()) + list(trans.parameters())
-        # optimizer = hydra.utils.instantiate(self.cfg.optimizer,
-        #                                     params = parameters,
-        #                                     lr = self.cfg.lr,
-        #                                     weight_decay = self.cfg.weight_decay)
-
-        # # Initialize the total agent
-        # agent = hydra.utils.instantiate(self.cfg.agent,
-        #                                 encoder=encoder,
-        #                                 trans=trans,
-        #                                 optimizer=optimizer)
-        # agent.to(device)
-
         # It looks at the datatype type and returns the train and test loader accordingly
         train_loader, test_loader, dataset = get_dataloaders(self.cfg)
 
-        if self.cfg.agent_type == 'cpn':
-            agent = init_cpn(self.cfg, device, rank)
-        elif self.cfg.agent_type == 'pli':
-            agent = init_pli(self.cfg, device, rank)
+        # Initialize the agent - looks at the type of the agent to be initialized first
+        agent = init_agent(self.cfg, device, rank)
 
         best_loss = torch.inf 
 
@@ -94,7 +66,6 @@ class Workspace:
             # Initialize logger (wandb)
             wandb_exp_name = '-'.join(self.hydra_dir.split('/')[-2:])
             self.logger = Logger(self.cfg, wandb_exp_name, out_dir=self.hydra_dir)
-
 
         # Start the training
         for epoch in range(self.cfg.train_epochs):
@@ -115,7 +86,6 @@ class Workspace:
 
             # Logging
             if rank == 0 and epoch % self.cfg.log_frequency == 0:
-                # print(f'logging in rank: {rank}')
                 self.logger.log({'epoch': epoch,
                                  'train loss': train_loss})
 
