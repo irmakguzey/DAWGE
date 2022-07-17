@@ -152,4 +152,4 @@ wandb
 src/dawge_planner/scripts/aruco_markers/data
 
 # Test videos 
-contrastive_learning/tests/*.mp4
+contrastive_learning/tests/animations/*
