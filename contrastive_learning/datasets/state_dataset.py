@@ -77,8 +77,12 @@ class StateDataset:
 
         return action_mean, action_std, corner_mean, corner_std
 
-    def denormalize_action(self, action):
+    def denormalize_action(self, action): # action.shape: 2
         return (action * self.action_std) + self.action_mean
+
+    def denormalize_corner(self, corner): # corner.shape: (16)
+        corner = corner.reshape((8,2))
+        return (corner * self.corner_std) + self.corner_mean
 
     def get_root_id(self, root):
         print('root: {}, root_id[root]: {}'.format(

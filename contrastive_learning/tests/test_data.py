@@ -23,7 +23,7 @@ if __name__ == "__main__":
     demo_name = 'box_marker_35'
     data_dir = '/home/irmak/Workspace/DAWGE/src/dawge_planner/data/{}'.format(demo_name)
     dump_dir = '/home/irmak/Workspace/DAWGE/contrastive_learning/tests/animations'
-    dump_file = '{}_test.mp4'.format(demo_name)
+    dump_file = '{}_action_test.mp4'.format(demo_name)
 
     # data_dirs = glob.glob("/home/irmak/Workspace/DAWGE/src/dawge_planner/data/box_marker_*")
     # dump_file_mult = 'all_markers_test.mp4'
@@ -40,7 +40,7 @@ if __name__ == "__main__":
     AnimateMarkers(
         data_dir = data_dir, 
         dump_dir = dump_dir, 
-        dump_file = f'marker_{dump_file}', 
+        dump_file = dump_file, 
         # dump_file = dump_file,
         fps = fps,
         mult_traj = False,

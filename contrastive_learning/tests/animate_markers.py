@@ -2,7 +2,7 @@ import cv2
 import glob
 import matplotlib
 import math
-matplotlib.use('Agg')
+# matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import numpy as np
@@ -36,8 +36,8 @@ class AnimateMarkers:
                 self.pos_corners = pickle.load(f)
             with open(os.path.join(data_dir, 'smoothened_corners.npy'), 'rb') as f:
                 self.corners_np = np.load(f) 
-            # with open(os.path.join(data_dir, 'commands.pickle'), 'rb') as f:
-            #     self.commands = pickle.load(f) # Will be used to predict the actions
+            with open(os.path.join(data_dir, 'commands.pickle'), 'rb') as f:
+                self.commands = pickle.load(f) # Will be used to predict the actions
 
         # print(self.corners_np.shape)
         
@@ -71,7 +71,7 @@ class AnimateMarkers:
             self.fig, self.animate, init_func = self.init_fun, frames = num_frames
         )
         self.anim.save(os.path.join(dump_dir, dump_file), fps=fps, extra_args=['-vcodec', 'libx264'])
-        print('Animation saved to: {}'.format(dump_file))
+        print('Animation saved to: {}'.format(os.path.join(dump_dir, dump_file)))
 
     def init_fun(self):
         self.line.set_data([], [])
@@ -124,23 +124,30 @@ class AnimateMarkers:
             #         pred_act_arr = patches.Arrow(mean_x, mean_y, -action_x, -action_y, color='m')
             #         self.axs.add_patch(pred_act_arr)
 
-        [p.remove() for p in self.axs.patches]
+        # print('self.axs.patches: {}'.format(len(self.axs.patches)))
+        # [p.remove() for p in self.axs.patches]
+        for p in list(self.axs.patches):    # note the list!
+            p.set_visible(False)
+            p.remove()
+        # self.axs.clear()
         curr_pos, _, action = self.pos_corners[i] # curr_pos.shape: 8,2
         pred_action = self.predicted_actions[i]
 
         # print(curr_pos.shape)
         for j in range(2): # j for each marker
             curr_polygon = curr_pos[j*4:(j+1)*4,:]
-            print('curr_polygon: {}'.format(curr_polygon))
+            # print('curr_polygon: {}'.format(curr_polygon))
             mean_x, mean_y = curr_polygon[:,0].mean(), curr_polygon[:,1].mean()
             right_top_x, right_top_y = curr_polygon[0,0], curr_polygon[0,1]
             right_bot_x, right_bot_y = curr_polygon[1,0], curr_polygon[1,1]
 
             if j == 0:
-                blue_arr = patches.Arrow(mean_x, mean_y, right_top_x-mean_x, right_top_y-mean_y, color='b')
-                red_arr = patches.Arrow(mean_x, mean_y, right_bot_x-mean_x, right_bot_y-mean_y, color='r')
-                self.axs.add_patch(blue_arr)
-                self.axs.add_patch(red_arr)
+                # blue_arr = patches.Arrow(mean_x, mean_y, right_top_x-mean_x, right_top_y-mean_y, color='b')
+                # red_arr = patches.Arrow(mean_x, mean_y, right_bot_x-mean_x, right_bot_y-mean_y, color='r')
+                blue_poly = patches.Polygon(np.concatenate((curr_polygon, curr_polygon[0:1])), color='b', fill=False)
+                # self.axs.add_patch(blue_arr)
+                # self.axs.add_patch(red_arr)
+                self.axs.add_patch(blue_poly)
             else:
                 if self.dir_initialized == False:
                     self.dir_initialized = True
@@ -150,28 +157,31 @@ class AnimateMarkers:
                     if self.show_predicted_action:
                         self.pred_dir = np.arctan2(front_y-mean_y, front_x-mean_x )
 
-                rotate_speed = action[0]
-                forward_speed = action[1]
-                self.dir += rotate_speed
+                forward_speed = action[0]
+                rotate_speed = action[1] / (self.fps)
+                self.dir -= rotate_speed
                 action_x = forward_speed * math.sin(self.dir) * 250 # 250 is only for scaling
                 action_y = forward_speed * math.cos(self.dir) * 250
-                action_arr = patches.Arrow(mean_x, mean_y, -action_x, -action_y, color='c') # - is for drawing purposes
+                action_arr = patches.Arrow(mean_x, mean_y, -action_x, -action_y, color='c', label='Actual Action') # - is for drawing purposes
 
-                green_arr = patches.Arrow(mean_x, mean_y, right_top_x-mean_x, right_top_y-mean_y, color='g')
-                red_arr = patches.Arrow(mean_x, mean_y, right_bot_x-mean_x, right_bot_y-mean_y, color='r')
-                self.axs.add_patch(green_arr)
-                self.axs.add_patch(red_arr)
+                # green_arr = patches.Arrow(mean_x, mean_y, right_top_x-mean_x, right_top_y-mean_y, color='g')
+                green_poly = patches.Polygon(np.concatenate((curr_polygon, curr_polygon[0:1])), color='g', fill=False)
+                # red_arr = patches.Arrow(mean_x, mean_y, right_bot_x-mean_x, right_bot_y-mean_y, color='r')
+                # self.axs.add_patch(green_arr)
+                # self.axs.add_patch(red_arr)
                 self.axs.add_patch(action_arr)
+                self.axs.add_patch(green_poly)
 
                 # Show the predicted actions if wanted
-                # if self.show_predicted_action:
-                #     rotate_speed = self.predicted_actions[i,0]
-                #     forward_speed = self.predicted_actions[i,1]
-                #     self.pred_dir += rotate_speed
-                #     action_x = forward_speed * math.sin(self.pred_dir) * 250 # 250 is only for scaling
-                #     action_y = forward_speed * math.cos(self.pred_dir) * 250
-                #     pred_act_arr = patches.Arrow(mean_x, mean_y, -action_x, -action_y, color='m')
-                #     self.axs.add_patch(pred_act_arr)
+                if self.show_predicted_action:
+                    forward_speed = pred_action[0]
+                    rotate_speed = pred_action[1] / self.fps
+                    self.pred_dir -= rotate_speed
+                    action_x = forward_speed * math.sin(self.pred_dir) * 250 # 250 is only for scaling
+                    action_y = forward_speed * math.cos(self.pred_dir) * 250
+                    pred_act_arr = patches.Arrow(mean_x, mean_y, -action_x, -action_y, color='m', label='Predicted Action')
+                    self.axs.add_patch(pred_act_arr)
 
+        self.axs.legend()
 
         return self.line,
