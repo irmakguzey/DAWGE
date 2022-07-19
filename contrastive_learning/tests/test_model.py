@@ -10,7 +10,7 @@ from tqdm import tqdm
 from torch.nn.parallel import DistributedDataParallel as DDP
 
 from contrastive_learning.models.pretrained_models import resnet18
-from contrastive_learning.models.custom_models import LinearInverse
+from contrastive_learning.models.custom_models import LinearInverse, PosToEmbedding, Transition
 from contrastive_learning.datasets.dataloaders import get_dataloaders
 from contrastive_learning.datasets.state_dataset import StateDataset
 
@@ -51,7 +51,6 @@ def get_closest_embeddings(out_dir, encoder, obs, k):
     z = encoder(obs).cpu().detach().numpy()
     dist = np.linalg.norm(all_z - z, axis=1)
     closest_z_idx = np.argsort(dist)[:k]
-    print('closest_z_idx.shape: {}'.format(closest_z_idx.shape))
 
     return closest_z_idx
 
@@ -72,6 +71,38 @@ def load_encoder(device, encoder_path, encoder_type:str):
     encoder = DDP(encoder.to(device), device_ids=[0])
 
     return encoder
+
+# Encoder of the SBFD agent
+def load_sbfd(cfg, device, pos_encoder_path, trans_path):
+    pos_encoder = PosToEmbedding(input_dim=cfg.pos_dim*2,
+                                 hidden_dim=cfg.hidden_dim,
+                                 out_dim=cfg.z_dim)
+
+    trans = Transition(z_dim=cfg.z_dim,
+                       action_dim=cfg.action_dim)
+    
+    # Load Encoder Variables
+    pos_encoder_sd = torch.load(pos_encoder_path)
+    new_pos_encoder_sd = OrderedDict()
+    for k, v in pos_encoder_sd.items():
+        name = k[7:] # remove `module.`
+        new_pos_encoder_sd[name] = v
+    # load params
+    pos_encoder.load_state_dict(new_pos_encoder_sd)
+
+    # Load Transition Variables
+    trans_sd = torch.load(trans_path)
+    new_trans_sd = OrderedDict()
+    for k, v in trans_sd.items():
+        name = k[7:]
+        new_trans_sd[name] = v 
+    trans.load_state_dict(new_trans_sd)
+
+    # Turn it into DDP - it was saved that way
+    pos_encoder = DDP(pos_encoder.to(device), device_ids=[0])
+    trans = DDP(trans.to(device), device_ids=[0])
+
+    return pos_encoder, trans
 
 def load_lin_model(cfg, device, model_path):
     lin_model = LinearInverse(cfg.pos_dim*2, cfg.action_dim, cfg.hidden_dim)

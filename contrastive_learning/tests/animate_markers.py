@@ -43,6 +43,7 @@ class AnimateMarkers:
         
         min_x, max_x = np.min(self.corners_np[:,:,:,0]), np.max(self.corners_np[:,:,:,0])
         min_y, max_y = np.min(self.corners_np[:,:,:,1]), np.max(self.corners_np[:,:,:,1])
+        print('min_x: {}, max_x: {}, min_y: {}, max_y: {}'.format(min_x, max_x, min_y, max_y))
 
         # Set the axes
         num_frames = len(self.pos_corners)
@@ -80,52 +81,6 @@ class AnimateMarkers:
     def animate(self, i):
         # Draw two axes, axes are represented by two arrows starting from the middle of the 
         # rectangles and go to the right top and left corners
-        # self.axs.patches = []
-        # for j in range(len(self.corners_np[i])):
-        #     curr_polygon = self.corners_np[i,j,:]
-            # mean_x, mean_y = curr_polygon[:,0].mean(), curr_polygon[:,1].mean()
-            # right_top_x, right_top_y = curr_polygon[0,0], curr_polygon[0,1]
-            # right_bot_x, right_bot_y = curr_polygon[1,0], curr_polygon[1,1]
-
-            # if j == 0:
-            #     blue_arr = patches.Arrow(mean_x, mean_y, right_top_x-mean_x, right_top_y-mean_y, color='b')
-            #     red_arr = patches.Arrow(mean_x, mean_y, right_bot_x-mean_x, right_bot_y-mean_y, color='r')
-            #     self.axs.add_patch(blue_arr)
-            #     self.axs.add_patch(red_arr)
-            # else:
-            #     if self.dir_initialized == False:
-            #         self.dir_initialized = True
-            #         # Set the action direction
-            #         front_x, front_y = ( right_top_x + right_bot_x ) / 2, ( right_top_y + right_bot_y ) / 2
-            #         self.dir = np.arctan2(front_y-mean_y, front_x-mean_x )
-            #         if self.show_predicted_action:
-            #             self.pred_dir = np.arctan2(front_y-mean_y, front_x-mean_x )
-
-            #     rotate_speed = self.commands[i].rotateSpeed
-            #     forward_speed = self.commands[i].forwardSpeed 
-            #     self.dir += rotate_speed
-            #     action_x = forward_speed * math.sin(self.dir) * 250 # 250 is only for scaling
-            #     action_y = forward_speed * math.cos(self.dir) * 250
-            #     action_arr = patches.Arrow(mean_x, mean_y, -action_x, -action_y, color='c') # - is for drawing purposes
-
-            #     green_arr = patches.Arrow(mean_x, mean_y, right_top_x-mean_x, right_top_y-mean_y, color='g')
-            #     red_arr = patches.Arrow(mean_x, mean_y, right_bot_x-mean_x, right_bot_y-mean_y, color='r')
-            #     self.axs.add_patch(green_arr)
-            #     self.axs.add_patch(red_arr)
-            #     self.axs.add_patch(action_arr)
-
-            #     # Show the predicted actions if wanted
-            #     if self.show_predicted_action:
-            #         rotate_speed = self.predicted_actions[i,0]
-            #         forward_speed = self.predicted_actions[i,1]
-            #         self.pred_dir += rotate_speed
-            #         action_x = forward_speed * math.sin(self.pred_dir) * 250 # 250 is only for scaling
-            #         action_y = forward_speed * math.cos(self.pred_dir) * 250
-            #         pred_act_arr = patches.Arrow(mean_x, mean_y, -action_x, -action_y, color='m')
-            #         self.axs.add_patch(pred_act_arr)
-
-        # print('self.axs.patches: {}'.format(len(self.axs.patches)))
-        # [p.remove() for p in self.axs.patches]
         for p in list(self.axs.patches):    # note the list!
             p.set_visible(False)
             p.remove()
