@@ -29,17 +29,29 @@ class Transition(nn.Module):
     def __init__(self, z_dim, action_dim):
         super().__init__()
 
+        self.a_repeatition = int(action_dim / 2)
         self.z_dim = z_dim 
         hidden_dim = 64
         self.model = nn.Sequential(
             nn.Linear(z_dim + action_dim, hidden_dim),
-            nn.ReLU(inplace=False),
+            nn.ReLU(),
             nn.Linear(hidden_dim, hidden_dim),
-            nn.ReLU(inplace=False),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, 2*hidden_dim),
+            nn.ReLU(),
+            nn.Linear(2*hidden_dim, 4*hidden_dim),
+            nn.ReLU(),
+            nn.Linear(4*hidden_dim, 2*hidden_dim),
+            nn.ReLU(),
+            nn.Linear(2*hidden_dim, hidden_dim),
+            nn.ReLU(),
             nn.Linear(hidden_dim, z_dim)
         )
         
     def forward(self, z, a):
+        curr_a = a
+        for _ in range(self.a_repeatition-1):
+            a = torch.cat((a,curr_a), dim=-1)
         x = torch.cat((z,a), dim=-1)
         x = self.model(x)
         return x

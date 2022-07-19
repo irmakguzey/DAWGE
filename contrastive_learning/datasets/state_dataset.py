@@ -38,8 +38,8 @@ class StateDataset:
                 self.pos_corners += pickle.load(f) # We need all pos_pairs in the same order when we retrieve the data
 
         # Calculate mean and std to normalize corners and actions
-        self.action_mean, self.action_std, self.corner_mean, self.corner_std = self.calculate_means_stds()
-
+        # self.action_mean, self.action_std, self.corner_mean, self.corner_std = self.calculate_means_stds()
+        self.action_min, self.action_max, self.corner_min, self.corner_max = self.calculate_mins_maxs()
     
     def __len__(self):
         return len(self.pos_corners)
@@ -48,12 +48,12 @@ class StateDataset:
         self.received_ids.append(index)
         curr_pos, next_pos, action = self.pos_corners[index]
 
-        # Normalize the positions
-        curr_pos = torch.FloatTensor((curr_pos - self.corner_mean) / self.corner_std)
-        next_pos = torch.FloatTensor((next_pos - self.corner_mean) / self.corner_std)
+        # Normalize the positions - TODO: If this works nicely then delete mean/std approach
+        curr_pos = torch.FloatTensor((curr_pos - self.corner_min) / (self.corner_max - self.corner_min))
+        next_pos = torch.FloatTensor((next_pos - self.corner_min) / (self.corner_max - self.corner_min))
 
         # Normalize the actions
-        action = torch.FloatTensor((action - self.action_mean) / self.action_std)
+        action = torch.FloatTensor((action - self.action_min) / (self.action_max - self.action_min))
 
         # return box_pos, dog_pos, next_box_pos, next_dog_pos, action
         return torch.flatten(curr_pos), torch.flatten(next_pos), action
@@ -77,12 +77,30 @@ class StateDataset:
 
         return action_mean, action_std, corner_mean, corner_std
 
+    def calculate_mins_maxs(self):
+        corners = np.zeros((len(self.pos_corners), 8,2))
+        actions = np.zeros((len(self.pos_corners), 2))
+        for i in range(len(self.pos_corners)):
+            corners[i,:] = self.pos_corners[i][0]
+            actions[i,0] = self.pos_corners[i][2][0]
+            actions[i,1] = self.pos_corners[i][2][1]
+
+        action_min, action_max = actions.min(axis=0), actions.max(axis=0)
+
+        corner_min, corner_max = corners.min(axis=(0,1)), corners.max(axis=(0,1))
+        corner_min, corner_max = np.expand_dims(corner_min, axis=0), np.expand_dims(corner_max, axis=0)
+        corner_min, corner_max = np.repeat(corner_min, 8, axis=0), np.repeat(corner_max, 8, axis=0)
+
+        return action_min, action_max, corner_min, corner_max
+
     def denormalize_action(self, action): # action.shape: 2
-        return (action * self.action_std) + self.action_mean
+        # return (action * self.action_std) + self.action_mean
+        return (action * (self.action_max - self.action_min)) + self.action_min
 
     def denormalize_corner(self, corner): # corner.shape: (16)
         corner = corner.reshape((8,2))
-        return (corner * self.corner_std) + self.corner_mean
+        # return (corner * self.corner_std) + self.corner_mean
+        return (corner * (self.corner_max - self.corner_min)) + self.corner_min
 
     def get_root_id(self, root):
         print('root: {}, root_id[root]: {}'.format(

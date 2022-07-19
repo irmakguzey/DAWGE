@@ -1,3 +1,4 @@
+import os
 import torch
 import torch.utils.data as data 
 from omegaconf import DictConfig, OmegaConf
@@ -30,3 +31,32 @@ def get_dataloaders(cfg : DictConfig):
                                     num_workers=cfg.num_workers, sampler=test_sampler)
 
     return train_loader, test_loader, dataset
+
+if __name__ == "__main__":
+    # Start the multiprocessing to load the saved models properly
+    os.environ["MASTER_ADDR"] = "localhost"
+    os.environ["MASTER_PORT"] = "29503"
+
+    torch.distributed.init_process_group(backend='gloo', rank=0, world_size=1)
+    torch.cuda.set_device(0)
+    
+    cfg = OmegaConf.load('/home/irmak/Workspace/DAWGE/contrastive_learning/configs/train.yaml')
+    dset = StateDataset(
+        data_dir = cfg.data_dir
+    )
+
+    train_loader, test_loader, _ = get_dataloaders(cfg)
+
+    action_min, action_max, corner_min, corner_max = dset.calculate_mins_maxs()
+    print('action: [min: {}, max: {}], corners: [min: {}, max: {}]'.format(
+        action_min, action_max, corner_min, corner_max
+    ))
+
+
+
+    batch = next(iter(test_loader))
+    pos, next_pos, action = [b for b in batch]
+    print('pos: {}'.format(pos))
+    print(dset.denormalize_corner(pos[0].detach().numpy()))
+    print(dset.denormalize_action(action))
+    

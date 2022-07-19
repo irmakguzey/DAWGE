@@ -15,11 +15,13 @@ class SBFD: # State Based Forward Dynamics Agent (Pretty similar to CPN with sma
                  pos_encoder, # Pos -> Embedding model is named as encoder as well
                  trans,
                  optimizer,
+                 use_encoder,
                  loss_fn) -> None:
         
         self.pos_encoder = pos_encoder 
         self.trans = trans 
         self.optimizer = optimizer 
+        self.use_encoder = use_encoder
 
         self.loss_type = loss_fn
         if loss_fn == "infonce":
@@ -58,18 +60,26 @@ class SBFD: # State Based Forward Dynamics Agent (Pretty similar to CPN with sma
         for batch in train_loader:
             self.optimizer.zero_grad()
             pos, pos_next, action = [b.to(self.device) for b in batch]
+            if self.use_encoder:
+                z, z_next = self.pos_encoder(pos), self.pos_encoder(pos_next) # b x z_dim 
+                z_delta = self.trans(z, action)  # b x z_dim
+                z_next_predict = z + z_delta
+                if self.loss_type == "mse":
+                    loss = self.loss_fn(z_next, z_next_predict)
+                elif self.loss_type == "infonce":
+                    loss = self.loss_fn(z, z_next, z_next_predict)
+            else:
+                pos_delta = self.trans(pos, action)
+                pos_next_predict = pos + pos_delta
+                if self.loss_type == "mse":
+                    loss = self.loss_fn(pos_next, pos_next_predict)
+                elif self.loss_type == "infonce":
+                    loss = self.loss_fn(pos, pos_next, pos_next_predict)
 
-            z, z_next = self.pos_encoder(pos), self.pos_encoder(pos_next) # b x z_dim 
-            z_next_predict = self.trans(z, action)  # b x z_dim
-            if self.loss_type == "mse":
-                loss = self.loss_fn(z_next, z_next_predict)
-            elif self.loss_type == "infonce":
-                loss = self.loss_fn(z, z_next, z_next_predict) # TODO: infonce was changed so you should check this
             train_loss += loss.item()
 
             # Back prop
             loss.backward()
-            # nn.utils.clip_grad_norm_(parameters, 20)
             self.optimizer.step() 
 
         return train_loss / len(train_loader)
@@ -83,14 +93,23 @@ class SBFD: # State Based Forward Dynamics Agent (Pretty similar to CPN with sma
 
         # Test for one epoch
         for batch in test_loader:
-            obs, obs_next, action = [b.to(self.device) for b in batch]
+            pos, pos_next, action = [b.to(self.device) for b in batch]
             with torch.no_grad():
-                z, z_next = self.pos_encoder(obs), self.pos_encoder(obs_next) # b x z_dim 
-                z_next_predict = self.trans(z, action)  # b x z_dim
-                if self.loss_type == "mse":
-                    loss = self.loss_fn(z_next, z_next_predict)
-                elif self.loss_type == "infonce":
-                    loss = self.loss_fn(z, z_next, z_next_predict) # TODO: infonce was changed so you should check this
-                test_loss += loss.item()
+                if self.use_encoder:
+                    z, z_next = self.pos_encoder(pos), self.pos_encoder(pos_next) # b x z_dim 
+                    z_delta = self.trans(z, action)  # b x z_dim
+                    z_next_predict = z + z_delta
+                    if self.loss_type == "mse":
+                        loss = self.loss_fn(z_next, z_next_predict)
+                    elif self.loss_type == "infonce":
+                        loss = self.loss_fn(z, z_next, z_next_predict) # TODO: infonce was changed so you should check this
+                else:
+                    pos_delta = self.trans(pos, action)
+                    pos_next_predict = pos + pos_delta
+                    if self.loss_type == "mse":
+                        loss = self.loss_fn(pos_next, pos_next_predict)
+                    elif self.loss_type == "infonce":
+                        loss = self.loss_fn(pos, pos_next, pos_next_predict)
+                    test_loss += loss.item()
 
         return test_loss / len(test_loader)

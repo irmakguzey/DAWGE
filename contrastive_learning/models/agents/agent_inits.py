@@ -64,6 +64,9 @@ def init_cpn(cfg, device, rank): # This can be used for sbfd agents as well
 
 def init_sbfd(cfg, device, rank): # This can be used for sbfd agents as well
     # Initialize the encoder and the trans
+    if cfg.agent.use_encoder == False:
+        cfg.z_dim = cfg.pos_dim*2
+        print('z_dim: {}'.format(cfg.z_dim))
     pos_encoder = hydra.utils.instantiate(cfg.pos_encoder,
                                          input_dim=cfg.pos_dim*2,
                                          hidden_dim=cfg.hidden_dim,
