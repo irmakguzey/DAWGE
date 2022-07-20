@@ -19,6 +19,10 @@ from matplotlib.animation import FuncAnimation, FFMpegWriter
 
 from contrastive_learning.tests.animate_markers import AnimateMarkers
 
+CAMERA_INTRINSICS = np.array([[612.82019043,   0.        , 322.14050293],
+                              [  0.        , 611.48303223, 247.9083252 ],
+                              [  0.        ,   0.        ,   1.        ]])
+
 # Function to draw box and dog position and applied action
 def plot_state(ax, curr_pos, plot_action, action=None, fps=15, color_scheme=1): # Color scheme is to have an alternative color for polygon colors
     min_x = -1.0 # Minimums and maximums around all the data
@@ -67,6 +71,34 @@ def plot_state(ax, curr_pos, plot_action, action=None, fps=15, color_scheme=1): 
             ax.plot()
             ax.legend()
 
+# Function to draw box and dog position and applied action
+def plot_rvec_tvec(ax, curr_pos, use_img=False, img=None): # Color scheme is to have an alternative color for polygon colors
+    if use_img == False:
+        img_shape = (720, 1280, 3)
+        blank_image = np.ones(img_shape, np.uint8) * 255
+        img = ax.imshow(blank_image.copy())
+
+    for j in range(2):
+        curr_rvec_tvec = curr_pos[j*6:(j+1)*6]
+        if j == 0:
+            frame_axis = aruco.drawAxis(img,
+                CAMERA_INTRINSICS,
+                np.zeros((5)),
+                curr_rvec_tvec[:3], curr_rvec_tvec[3:],
+                0.01)
+        else:
+            frame_axis = aruco.drawAxis(frame_axis.copy(),
+                CAMERA_INTRINSICS,
+                np.zeros((5)),
+                curr_rvec_tvec[:3], curr_rvec_tvec[3:],
+                0.01)
+
+    img.set_array(frame_axis) # If use_img is true then img will not be none
+    ax.plot()
+
+    return img
+
+    
 if __name__ == "__main__":
     demo_name = 'box_marker_35'
     data_dir = '/home/irmak/Workspace/DAWGE/src/dawge_planner/data/{}'.format(demo_name)

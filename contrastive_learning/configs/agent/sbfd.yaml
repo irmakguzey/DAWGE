@@ -1,5 +1,5 @@
 _target_: contrastive_learning.models.agents.sbfd.SBFD
-loss_fn: mse
+loss_fn: infonce
 use_encoder: False
 pos_encoder: ???
 trans: ???

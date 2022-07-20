@@ -4,9 +4,14 @@ import numpy as np
 import os
 import pickle
 
+from cv2 import aruco
 from tqdm import tqdm
 
 from unitree_legged_msgs.msg import HighCmd
+
+CAMERA_INTRINSICS = np.array([[612.82019043,   0.        , 322.14050293],
+                              [  0.        , 611.48303223, 247.9083252 ],
+                              [  0.        ,   0.        ,   1.        ]])
 
 # Methods to preprocess data - is used in dataset
 
@@ -158,6 +163,41 @@ def dump_pos_corners(root: str):
     with open(os.path.join(root, 'pos_corners.pickle'), 'wb') as f:
         pickle.dump(pos_corners, f)
 
+def get_rvec_tvec(smth_corners):
+    rvec, tvec, _ = aruco.estimatePoseSingleMarkers(
+                        smth_corners,
+                        0.01,
+                        CAMERA_INTRINSICS,
+                        np.zeros((5)) # Distortion coefficients but we just have them as zero
+                    )
+    rvec_tvec = np.concatenate((rvec[:,0,:], tvec[:,0,:]), axis=-1)
+    return rvec_tvec.flatten()
+
+def dump_rvec_tvec(root: str): # Instead of pos_corners we will use translational and rotational vectors of the markers
+    with open(os.path.join(root, 'smoothened_corners.npy'), 'rb') as f:
+        smth_corners = np.load(f)
+    with open(os.path.join(root, 'commands.pickle'), 'rb') as f:
+        commands = pickle.load(f)
+
+    # Eliminate the indices where values are -1 (they should be ignored)
+    # That means one or both of the markers got out of the frame    
+    valid_idx = []
+    for i,corner in enumerate(smth_corners):
+        if not (corner == -1).any():
+            valid_idx.append(i)
+
+    pos_rvec_tvec = [] # [box_rvec, box_tvec, dog_rvec, dog_tvec] is wanted
+    for i in valid_idx[:-1]:
+        action = (commands[i].forwardSpeed, commands[i].rotateSpeed)
+        pos_rvec_tvec.append((
+            get_rvec_tvec(smth_corners[i,:,:]),
+            get_rvec_tvec(smth_corners[i+1,:,:]),
+            action
+        ))
+
+    with open(os.path.join(root, 'pos_rvec_tvec.pickle'), 'wb') as f:
+        pickle.dump(pos_rvec_tvec, f)
+    
 
 if __name__ == "__main__":
     data_dir = "/home/irmak/Workspace/DAWGE/src/dawge_planner/data/box_marker_10"
@@ -167,8 +207,9 @@ if __name__ == "__main__":
     # video_type = 'color'
 
     for data_dir in data_dirs:
-        smoothen_corners(data_dir)
-        dump_pos_corners(data_dir)
+        # smoothen_corners(data_dir)
+        # dump_pos_corners(data_dir)
+        dump_rvec_tvec(data_dir)
 
     # for data_dir in data_dirs:
     #     print(data_dir)
