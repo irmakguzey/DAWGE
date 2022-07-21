@@ -14,16 +14,15 @@ from contrastive_learning.datasets.preprocess import smoothen_corners, dump_pos_
 # import contrastive_learning.utils.utils as utils
 
 class StateDataset:
-    def __init__(self, cfg: DictConfig, single_dir=False) -> None:
+    def __init__(self, cfg: DictConfig, single_dir=False, single_dir_root=None) -> None:
 
         # Get the roots
         self.cfg = cfg
-        data_dir = cfg.data_dir
         if not single_dir:
-            roots = glob.glob(f'{data_dir}/box_marker_*') # TODO: change this in the future
+            roots = glob.glob(f'{cfg.data_dir}/box_marker_*') # TODO: change this in the future
             roots = sorted(roots)
         else:
-            roots = [data_dir]
+            roots = [single_dir_root]
 
         # Preprocess data for all the roots
         # for root in roots:

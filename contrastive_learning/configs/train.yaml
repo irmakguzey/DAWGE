@@ -28,7 +28,7 @@ device: cuda
 
 agent_type: pli # cpn / pli / sbfd
 dataset_type: state # State or visual for now
-pos_type: rvec_tvec # rvec_tvec / corners
+pos_type: corners # rvec_tvec / corners
 train_epochs: 1000
 save_frequency: 10 # Frequency to save the model - there will be a test in each step
 train_dset_split: 0.8
@@ -39,7 +39,7 @@ lr: 1e-3
 weight_decay: 0
 # z_dim: 1000 # resnet18 gives out 1000 dimensions (needed for cpn)
 z_dim: 8 # Positions will be mapped to embeddings
-pos_dim: 6 # this is needed for state based models - rvec: 3 tvec: 3
+pos_dim: 8 # this is needed for state based models - rvec: 3 tvec: 3
 hidden_dim: 64 # Expand to 64 first then to z_dim
 action_dim: 2
 
