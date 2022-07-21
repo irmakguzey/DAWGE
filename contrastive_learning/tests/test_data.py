@@ -18,6 +18,7 @@ from unitree_legged_msgs.msg import HighCmd, HighState
 from matplotlib.animation import FuncAnimation, FFMpegWriter
 
 from contrastive_learning.tests.animate_markers import AnimateMarkers
+from contrastive_learning.tests.animate_rvec_tvec import AnimateRvecTvec
 
 CAMERA_INTRINSICS = np.array([[612.82019043,   0.        , 322.14050293],
                               [  0.        , 611.48303223, 247.9083252 ],
@@ -100,21 +101,29 @@ def plot_rvec_tvec(ax, curr_pos, use_img=False, img=None): # Color scheme is to 
 
     
 if __name__ == "__main__":
-    demo_name = 'box_marker_35'
+    demo_name = 'box_marker_7'
     data_dir = '/home/irmak/Workspace/DAWGE/src/dawge_planner/data/{}'.format(demo_name)
     dump_dir = '/home/irmak/Workspace/DAWGE/contrastive_learning/tests/animations'
-    dump_file = '{}_action_test.mp4'.format(demo_name)
+    # dump_file = '{}_corners.mp4'.format(demo_name)
 
     data_dirs = glob.glob("/home/irmak/Workspace/DAWGE/src/dawge_planner/data/box_marker_*")
     dump_file_mult = 'all_markers_test.mp4'
     fps = 15
 
     AnimateMarkers(
-        data_dir = data_dirs, 
+        data_dir = data_dir, 
         dump_dir = dump_dir, 
-        dump_file = dump_file_mult,
+        dump_file = '{}_corners.mp4'.format(demo_name),
         fps = fps,
-        mult_traj = True
+        mult_traj = False,
+        show_predicted_action=False
+    )
+
+    AnimateRvecTvec(
+        data_dir = data_dir, 
+        dump_dir = dump_dir,
+        dump_file = '{}_rvec_tvec.mp4'.format(demo_name),
+        fps = fps
     )
 
     # AnimateMarkers(

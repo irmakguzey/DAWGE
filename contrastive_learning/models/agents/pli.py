@@ -17,7 +17,8 @@ class PLI:
     def __init__(self,
                  model,
                  optimizer,
-                 loss_fn: str
+                 loss_fn: str,
+                 use_encoder: bool, # This is not used for now - if we were to add encoder could be useful
                  ) -> None:
 
         self.model = model 

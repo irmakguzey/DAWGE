@@ -145,7 +145,7 @@ def dump_predicted_actions(out_dir, lin_model, device, cfg):
 # Action predictions for one data_dir
 def predict_traj_actions(data_dir, lin_model, device, cfg):
     # Get the dataset
-    dataset = StateDataset(data_dir, single_dir=True)
+    dataset = StateDataset(cfg, single_dir=True)
     predicted_actions = np.zeros((len(dataset), 2))
     test_loader = data.DataLoader(dataset, batch_size=cfg.batch_size, shuffle=False, num_workers=4)
 

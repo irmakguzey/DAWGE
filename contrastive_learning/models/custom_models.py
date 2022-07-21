@@ -30,21 +30,27 @@ class Transition(nn.Module):
         super().__init__()
 
         self.a_repeatition = int(action_dim / 2)
-        self.z_dim = z_dim 
         hidden_dim = 64
+        # self.model = nn.Sequential(
+        #     nn.Linear(z_dim + action_dim, hidden_dim),
+        #     nn.ReLU(),
+        #     nn.Linear(hidden_dim, hidden_dim),
+        #     nn.ReLU(),
+        #     nn.Linear(hidden_dim, 2*hidden_dim),
+        #     nn.ReLU(),
+        #     nn.Linear(2*hidden_dim, 4*hidden_dim),
+        #     nn.ReLU(),
+        #     nn.Linear(4*hidden_dim, 2*hidden_dim),
+        #     nn.ReLU(),
+        #     nn.Linear(2*hidden_dim, hidden_dim),
+        #     nn.ReLU(),
+        #     nn.Linear(hidden_dim, z_dim)
+        # )
         self.model = nn.Sequential(
             nn.Linear(z_dim + action_dim, hidden_dim),
-            nn.ReLU(),
+            nn.ReLU(inplace=False),
             nn.Linear(hidden_dim, hidden_dim),
-            nn.ReLU(),
-            nn.Linear(hidden_dim, 2*hidden_dim),
-            nn.ReLU(),
-            nn.Linear(2*hidden_dim, 4*hidden_dim),
-            nn.ReLU(),
-            nn.Linear(4*hidden_dim, 2*hidden_dim),
-            nn.ReLU(),
-            nn.Linear(2*hidden_dim, hidden_dim),
-            nn.ReLU(),
+            nn.ReLU(inplace=False),
             nn.Linear(hidden_dim, z_dim)
         )
         

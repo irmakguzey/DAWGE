@@ -62,11 +62,6 @@ class AnimateMarkers:
                 self.predicted_actions = np.load(f)
             self.pred_dir = 0
 
-        # print('self.predicted_actions: {}'.format(self.predicted_actions))
-        print('predicted_actions.shape: {}, len(pos_corners): {}'.format(
-            self.predicted_actions.shape, len(self.pos_corners)
-        ))
-
         # Create the animation object and save it
         self.anim = FuncAnimation(
             self.fig, self.animate, init_func = self.init_fun, frames = num_frames
@@ -86,7 +81,8 @@ class AnimateMarkers:
             p.remove()
         # self.axs.clear()
         curr_pos, _, action = self.pos_corners[i] # curr_pos.shape: 8,2
-        pred_action = self.predicted_actions[i]
+        if self.show_predicted_action:
+            pred_action = self.predicted_actions[i]
 
         # print(curr_pos.shape)
         for j in range(2): # j for each marker

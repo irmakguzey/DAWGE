@@ -1,4 +1,5 @@
 _target_: contrastive_learning.models.agents.pli.PLI
 loss_fn: mse
+use_encoder: False
 model: ???
 optimizer: ???
