@@ -10,7 +10,7 @@ class HighLevelTask():
     # High commands will be published and high states will be listened
     def __init__(self, high_cmd_topic, high_state_topic, rate):
         # Initialize ros node
-        rospy.init_node("high_level_task")
+        # rospy.init_node("high_level_task")
 
         # Initialize the subscriber
         rospy.Subscriber(high_state_topic, HighState, self.high_state_cb)

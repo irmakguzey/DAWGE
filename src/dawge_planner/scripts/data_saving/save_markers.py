@@ -103,19 +103,6 @@ class SaveMarkers: # Class to save image streams
             self.img = plt.imshow(frame_axis)
         else:
             self.img.set_data(frame_axis)
-            
-        # Plot the ids 
-        # if len(self.curr_corners) > 0 and (not self.id_imgs_init):
-        #     for i in range(len(self.curr_corners)):
-        #         c = self.curr_corners[i][0]
-        #         self.id_imgs = plt.plot([c[:, 0].mean()], [c[:, 1].mean()], "o", label = "id={0}".format(self.curr_ids[i]))
-        #     plt.legend()
-        #     self.id_imgs_init = True
-
-        # if self.id_imgs_init:
-        #     for i in range(len(self.curr_corners)):
-        #         c = self.curr_corners[i][0]
-        #         self.id_imgs[0].set_data([c[:, 0].mean()], [c[:, 1].mean()])
 
         return frame_axis
 

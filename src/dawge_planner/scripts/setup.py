@@ -1,12 +1,3 @@
-# from distutils.core import setup
-# from catkin_pkg.python_setup import generate_distutils_setup
-
-# d = generate_distutils_setup(
-#     packages=['dawge_planner'],
-#     package_dir={'': 'scripts'}
-# )
-# setup(**d)
-
 # Script to define dawge_planner as a package as well
 
 from setuptools import find_packages, setup
