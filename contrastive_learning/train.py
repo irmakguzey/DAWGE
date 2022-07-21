@@ -1,5 +1,6 @@
 # Main training script - trains distributedly accordi
 
+import glob
 import os
 import hydra
 import logging
@@ -18,6 +19,7 @@ from tqdm import tqdm
 # Custom imports 
 from contrastive_learning.utils.logger import Logger
 from contrastive_learning.datasets.dataloaders import get_dataloaders
+from contrastive_learning.datasets.preprocess import smoothen_corners, dump_pos_corners, dump_rvec_tvec
 from contrastive_learning.models.agents.agent_inits import init_agent
 
 
@@ -118,6 +120,14 @@ def main(cfg : DictConfig) -> None:
 
     os.environ["MASTER_ADDR"] = "localhost"
     os.environ["MASTER_PORT"] = "29503"
+    
+    # Preprocess data
+    roots = glob.glob(f'{cfg.data_dir}/box_marker_*') # TODO: change this in the future
+    roots = sorted(roots)
+    for root in roots:
+        smoothen_corners(root)
+        dump_pos_corners(root, cfg.frame_interval)
+        dump_rvec_tvec(root, cfg.frame_interval)
     
     print("Distributed training enabled. Spawning {} processes.".format(workspace.cfg.world_size))
     mp.spawn(workspace.train, nprocs=workspace.cfg.world_size)

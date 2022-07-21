@@ -11,7 +11,7 @@ from contrastive_learning.datasets.visual_dataset import VisualDataset
 def get_dataloaders(cfg : DictConfig):
     # Load dataset - splitting will be done with random splitter
     if cfg.dataset_type == 'state':
-        dataset = StateDataset(data_dir=cfg.data_dir)
+        dataset = StateDataset(cfg)
     else:
         dataset = VisualDataset(data_dir=cfg.data_dir, frame_interval=cfg.frame_interval, video_type=cfg.video_type)
 

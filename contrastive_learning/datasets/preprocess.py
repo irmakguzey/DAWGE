@@ -136,14 +136,12 @@ def smoothen_corners(root: str):
         np.save(f, corners_np)
 
 # Load corners_np and commands.pickle and dump them in a similar fashion to pos pairs
-def dump_pos_corners(root: str):
+def dump_pos_corners(root: str, frame_interval: int):
     pos_corners = [] # Will have curr dog and box, next dog and box pos and action applied between
     with open(os.path.join(root, 'smoothened_corners.npy'), 'rb') as f:
         smth_corners = np.load(f)
     with open(os.path.join(root, 'commands.pickle'), 'rb') as f:
         commands = pickle.load(f)
-
-    print(f'len(corners): {len(smth_corners)}, len(commands): {len(commands)}')
 
     # Eliminate the indices where values are -1 (they should be ignored)
     # That means one or both of the markers got out of the frame    
@@ -152,11 +150,11 @@ def dump_pos_corners(root: str):
         if not (corner == -1).any():
             valid_idx.append(i)
 
-    for i in valid_idx[:-1]:
+    for i in valid_idx[:-frame_interval]:
         action = (commands[i].forwardSpeed, commands[i].rotateSpeed)
         pos_corners.append((
             np.concatenate((smth_corners[i,0,:], smth_corners[i,1,:])), # Current box and dog position
-            np.concatenate((smth_corners[i+1,0,:], smth_corners[i+1,1,:])), # Next box and dog position
+            np.concatenate((smth_corners[i+frame_interval,0,:], smth_corners[i+frame_interval,1,:])), # Next box and dog position
             action # action
         ))
 
@@ -173,7 +171,7 @@ def get_rvec_tvec(smth_corners):
     rvec_tvec = np.concatenate((rvec[:,0,:], tvec[:,0,:]), axis=-1)
     return rvec_tvec.flatten()
 
-def dump_rvec_tvec(root: str): # Instead of pos_corners we will use translational and rotational vectors of the markers
+def dump_rvec_tvec(root: str, frame_interval: int): # Instead of pos_corners we will use translational and rotational vectors of the markers
     with open(os.path.join(root, 'smoothened_corners.npy'), 'rb') as f:
         smth_corners = np.load(f)
     with open(os.path.join(root, 'commands.pickle'), 'rb') as f:
@@ -187,11 +185,11 @@ def dump_rvec_tvec(root: str): # Instead of pos_corners we will use translationa
             valid_idx.append(i)
 
     pos_rvec_tvec = [] # [box_rvec, box_tvec, dog_rvec, dog_tvec] is wanted
-    for i in valid_idx[:-1]:
+    for i in valid_idx[:-frame_interval]:
         action = (commands[i].forwardSpeed, commands[i].rotateSpeed)
         pos_rvec_tvec.append((
             get_rvec_tvec(smth_corners[i,:,:]),
-            get_rvec_tvec(smth_corners[i+1,:,:]),
+            get_rvec_tvec(smth_corners[i+frame_interval,:,:]),
             action
         ))
 
@@ -207,8 +205,8 @@ if __name__ == "__main__":
     # video_type = 'color'
 
     for data_dir in data_dirs:
-        # smoothen_corners(data_dir)
-        # dump_pos_corners(data_dir)
+        smoothen_corners(data_dir)
+        dump_pos_corners(data_dir)
         dump_rvec_tvec(data_dir)
 
     # for data_dir in data_dirs:

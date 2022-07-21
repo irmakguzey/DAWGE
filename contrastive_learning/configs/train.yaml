@@ -28,7 +28,7 @@ device: cuda
 
 agent_type: sbfd # cpn / pli / sbfd
 dataset_type: state # State or visual for now
-pos_type: rvec_tvec # TODO: add this to the name as well
+pos_type: rvec_tvec # rvec_tvec / corners
 train_epochs: 1000
 save_frequency: 10 # Frequency to save the model - there will be a test in each step
 train_dset_split: 0.8
@@ -43,9 +43,6 @@ pos_dim: 6 # this is needed for state based models
 hidden_dim: 64 # Expand to 64 first then to z_dim
 action_dim: 8 # TODO: This should be changed at some point
 
-# this needs to be specified manually
-experiment: sbfd_ue_${agent.use_encoder}_lf_${agent.loss_fn}_bs_${batch_size}_hd_${hidden_dim}_lr_${lr}_zd_${z_dim}
-
 distributed: true
 num_workers: 4
 world_size: 1
@@ -53,8 +50,13 @@ num_gpus: 4
 
 fps: 15 # This should be the same as the all the fps in saving - little differences are not going to be taken
 # sec_interval: 0.33 # seconds to separate two timesteps
-frame_interval: 8 # Will be equal to fps * sec_interval - frames to separate two timesteps
+# frame_interval: 8 # Will be equal to fps * sec_interval - frames to separate two timesteps
+frame_interval: 5
 video_type: color # NOTE: you could remove this if you want to use both
+
+# this needs to be specified manually
+experiment: sbfd_ue_${agent.use_encoder}_lf_${agent.loss_fn}_fi_${frame_interval}_pt_${pos_type}_bs_${batch_size}_hd_${hidden_dim}_lr_${lr}_zd_${z_dim}
+
 
 data_dir: /home/irmak/Workspace/DAWGE/src/dawge_planner/data
 checkpoint_dir: ??? # Will be set to hydra dir inside the code
