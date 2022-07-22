@@ -17,6 +17,7 @@ class TeleopTask(HighLevelTask):
     def __init__(self, high_cmd_topic, high_state_topic, rate, twist_topic, lin_vel, ang_vel):
         HighLevelTask.__init__(self, high_cmd_topic, high_state_topic, rate)
 
+
         self.lin_vel = lin_vel
         self.ang_vel = ang_vel 
 
@@ -52,6 +53,8 @@ class TeleopTask(HighLevelTask):
 
 
 if __name__ == "__main__":
+    rospy.init_node('dawge_teleop_task')
+
     task = TeleopTask(
         high_cmd_topic="dawge_high_cmd",
         high_state_topic="dawge_high_state",

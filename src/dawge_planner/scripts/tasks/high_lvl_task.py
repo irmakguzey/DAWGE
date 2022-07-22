@@ -32,7 +32,7 @@ class HighLevelTask():
         while not rospy.is_shutdown():
             self.motion_time += 1
 
-            if self.motion_time > self.rate_count*4 and self.is_initialized():
+            if self.is_initialized() and self.waited_enough():
                 self.update_high_cmd()
 
             self.high_cmd_pub.publish(self.high_cmd_msg)
@@ -45,3 +45,6 @@ class HighLevelTask():
 
     def is_initialized(self):
         pass
+
+    def waited_enough(self):
+        return self.motion_time > self.rate_count*4

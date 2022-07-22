@@ -1,5 +1,6 @@
 # Script to test the command files that are saved
 
+from turtle import forward
 import cv2
 import glob
 import matplotlib
@@ -84,6 +85,84 @@ def plot_corners_state(ax, curr_pos, plot_action, actions=None, fps=15, color_sc
             ax.plot()
             ax.legend()
 
+# Draw the boxes with the same way as rvec tvec plotting
+def plot_corners(ax, curr_pos, use_img=False, img=None, plot_action=False, actions=None, color_scheme=1):
+    # actions: [action, pred_action]
+    if plot_action:
+        action = actions[0]
+        pred_action = actions[1]
+        dir = 0
+        pred_dir = 0
+        action_pos = (1100,600)
+
+    img_shape = (720, 1280, 3)
+    blank_image = np.ones(img_shape, np.uint8) * 255
+    if use_img == False: # use img is when two plots are drawn on top of each other
+        img = ax.imshow(blank_image.copy())
+
+    # Plot the boxed
+    for j in range(2):
+        curr_polygon = curr_pos[j*4:(j+1)*4,:]
+#         print('curr_polygon.shape: {}'.format(curr_polygon.shape))
+        if j == 0: # Show the box position
+            if color_scheme == 1:
+                box_color = (51,102,0)
+            else:
+                box_color = (102,204,0)
+
+            frame_axis = cv2.polylines(blank_image.copy(), np.int32([curr_polygon.reshape((-1,1,2))]),
+                                       isClosed=True, color=box_color, thickness=3)
+
+        else:
+            if color_scheme == 1:
+                dog_color = (0,0,153)
+            else:
+                dog_color = (0,0,255)
+
+            frame_axis = cv2.polylines(frame_axis.copy(), np.int32([curr_polygon.reshape((-1,1,2))]),
+                                       isClosed=True, color=dog_color, thickness=3)
+
+    if plot_action:
+        # Actual action
+        forward_speed = action[0]
+        rotate_speed = action[1]
+        dir -= rotate_speed
+        action_x = forward_speed * math.sin(dir) * 500 # 250 is only for scaling
+        action_y = forward_speed * math.cos(dir) * 500
+        frame_axis = cv2.arrowedLine(frame_axis.copy(), action_pos,
+                                        (int(action_pos[0]+action_x), int(action_pos[1]-action_y)), # Y should be removed from the action
+                                        color=(0,200,200), thickness=3)
+
+        
+        # Draw an ellipse to show the rotate_speed more thoroughly
+        ellipse_pos = (900,600)
+        axesLength = (50, 50)
+        angle = 0
+        startAngle = 0
+        endAngle = rotate_speed * (1080. / np.pi)
+        frame_axis = cv2.ellipse(frame_axis.copy(), ellipse_pos, axesLength,
+                angle, startAngle, endAngle, color=(0,200,200), thickness=3)
+
+
+        # Predicted action
+        ellipse_pos = (800,600)
+        forward_speed = pred_action[0]
+        rotate_speed = pred_action[1]
+        endAngle = rotate_speed * (1080. / np.pi)
+        pred_dir -= rotate_speed
+        action_x = forward_speed * math.sin(pred_dir) * 500 # 250 is only for scaling
+        action_y = forward_speed * math.cos(pred_dir) * 500
+        frame_axis = cv2.arrowedLine(frame_axis.copy(), action_pos,
+                                        (int(action_pos[0]+action_x), int(action_pos[1]-action_y)), # Y should be removed from the action
+                                        color=(104,43,159), thickness=3)
+        frame_axis = cv2.ellipse(frame_axis.copy(), ellipse_pos, axesLength,
+                angle, startAngle, endAngle, color=(104,43,159), thickness=3)
+
+    img.set_array(frame_axis) # If use_img is true then img will not be none
+    ax.plot()
+
+    return img, frame_axis
+
 # Function to draw box and dog position and applied action
 def plot_rvec_tvec(ax, curr_pos, use_img=False, img=None, plot_action=False, actions=None): # Color scheme is to have an alternative color for polygon colors
     # actions: [action, pred_action]
@@ -94,9 +173,9 @@ def plot_rvec_tvec(ax, curr_pos, use_img=False, img=None, plot_action=False, act
         pred_dir = 0
         action_pos = (1100,600)
 
+    blank_image = np.ones(img_shape, np.uint8) * 255
     if use_img == False:
         img_shape = (720, 1280, 3)
-        blank_image = np.ones(img_shape, np.uint8) * 255
         img = ax.imshow(blank_image.copy())
 
     for j in range(2):

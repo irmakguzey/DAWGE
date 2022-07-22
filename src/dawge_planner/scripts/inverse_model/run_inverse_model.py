@@ -31,6 +31,7 @@ from sensor_msgs.msg import Image
 
 # Custom imports
 from contrastive_learning.tests.test_model import load_lin_model
+from contrastive_learning.tests.test_data import plot_corners
 from contrastive_learning.datasets.state_dataset import StateDataset
 from scripts.tasks.high_lvl_task import HighLevelTask
 
@@ -51,6 +52,10 @@ class RunInverseModel(HighLevelTask):
 
         # Initialize ROS listeners
         rospy.Subscriber(color_img_topic, Image, self.color_img_cb)
+        # Initialize the ROS publisher to plot the action and the position
+        self.state_pub = rospy.Publisher('/dawge_curr_state', Image, queue_size=10)
+        _, self.ax = plt.subplots(figsize=(50,50), nrows=1, ncols=1)
+        self.state_msg = Image()
 
         signal.signal(signal.SIGINT, self.end_signal_handler) # TODO: not sure what to do here
         self.frame = 0
@@ -86,45 +91,34 @@ class RunInverseModel(HighLevelTask):
         print('len(dataset): {}'.format(len(self.dataset)))
 
     def update_high_cmd(self):
-        # if self.twist_msg is None:
-        #     return
 
-        # self.high_cmd_msg.mode = 2
+        # Get the next state position from the dataset
+        _, next_pos, action = next(iter(self.data_loader))
+        next_pos = next_pos.to(self.device)
+        # Normalize the curr_pos
+        curr_pos = self.dataset.normalize_corner(self.curr_pos).to(self.device)
+        curr_pos = torch.unsqueeze(curr_pos, 0)
+        print('curr_pos: {}, next_pos: {}'.format(curr_pos, next_pos))
+        pred_action = self.lin_model(curr_pos, next_pos)
 
-        # # Set the angular velocity - we will use set linear and angular velocity
-        # self.high_cmd_msg.rotateSpeed = 0
-        # if self.twist_msg.angular.z > 0:
-        #     self.high_cmd_msg.rotateSpeed = self.ang_vel 
-        # elif self.twist_msg.angular.z < 0:
-        #     self.high_cmd_msg.rotateSpeed = -self.ang_vel             
+        # Denormalize the action
+        pred_action = self.dataset.denormalize_action(pred_action[0].cpu().detach().numpy()) # NOTE: what is the 0 for?
+        action = self.dataset.denormalize_action(action[0].cpu().detach().numpy())
+        print('pred_action: {}, action: {}'.format(pred_action, action))
 
-        # # Set the linear velocity 
-        # self.high_cmd_msg.forwardSpeed = 0
-        # if self.twist_msg.linear.x > 0:
-        #     self.high_cmd_msg.forwardSpeed = self.lin_vel 
-        # elif self.twist_msg.linear.x < 0:
-        #     self.high_cmd_msg.forwardSpeed = -self.lin_vel 
+        # Plot and publish the position
+        _, frame_axis = plot_corners(self.ax, self.curr_pos, plot_action=True, actions=(action, pred_action))
+        self.pub_marker_image(frame_axis)
 
-        if self.is_initialized(): # Means that curr_pos has position for both of the markers
-            if self.waited_enough(): # Method to increase a counter in this loop so that we can make the robot wait for certain time - will set the limit to the counter by try and fail
-                # Get the next state position from the dataset
-                _, next_pos, _ = next(iter(self.data_loader))
-                next_pos = next_pos.to(self.device)
-                # Normalize the curr_pos
-                curr_pos = self.dataset.normalize_corner(self.curr_pos).to(self.device)
-                curr_pos = torch.unsqueeze(curr_pos, 0)
-                # print('curr_pos.shape: {}, next_pos.shape: {}'.format(curr_pos, next_pos))
-                pred_action = self.lin_model(curr_pos, next_pos)
+        # Update the high level command
+        self.high_cmd_msg.mode = 2
+        self.high_cmd_msg.forwardSpeed = pred_action[0]
+        self.high_cmd_msg.rotateSpeed = pred_action[1]
 
-                print('pred_action: {}'.format(pred_action))
-                # Denormalize the action
-                pred_action = self.dataset.denormalize_action(pred_action[0].cpu().detach().numpy()) # NOTE: what is the 0 for?
-                print('pred_action denormalized: {}'.format(pred_action))
-
-                # Update the high level command
-                self.high_cmd_msg.mode = 2
-                self.high_cmd_msg.forwardSpeed = pred_action[0]
-                self.high_cmd_msg.rotateSpeed = pred_action[1]
+    def pub_marker_image(self, frame_axis):
+        cv2_img = cv2.cvtColor(frame_axis, cv2.COLOR_RGB2BGR)
+        self.state_msg = self.cv_bridge.cv2_to_imgmsg(cv2_img, "bgr8")
+        self.state_pub.publish(self.state_msg)
 
     def get_corners(self):
         if self.color_img_msg is None:
@@ -135,12 +129,13 @@ class RunInverseModel(HighLevelTask):
         aruco_dict = aruco.Dictionary_get(aruco.DICT_6X6_250)
         parameters =  aruco.DetectorParameters_create()
         curr_corners, curr_ids, _ = aruco.detectMarkers(gray, aruco_dict, parameters=parameters)
+        # print('curr_corners: {}'.format(curr_corners))
 
         for i in range(len(curr_corners)): # Number of markers
             if curr_ids[i] == 1:
-                self.curr_pos[i*4:(i+1)*4,:] = curr_corners[i][0,:]
-
-        # print('self.curr_pos: {}'.format(self.curr_pos))
+                self.curr_pos[:4,:] = curr_corners[i][0,:]
+            elif curr_ids[i] == 2:
+                self.curr_pos[4:,:] = curr_corners[i][0,:]
 
 
     def is_initialized(self):
