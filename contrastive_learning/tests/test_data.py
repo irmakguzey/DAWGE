@@ -86,7 +86,7 @@ def plot_corners_state(ax, curr_pos, plot_action, actions=None, fps=15, color_sc
             ax.legend()
 
 # Draw the boxes with the same way as rvec tvec plotting
-def plot_corners(ax, curr_pos, use_img=False, img=None, plot_action=False, actions=None, color_scheme=1):
+def plot_corners(ax, curr_pos, use_img=False, img=None, use_frame_axis=False, frame_axis=None, plot_action=False, actions=None, color_scheme=1):
     # actions: [action, pred_action]
     if plot_action:
         action = actions[0]
@@ -109,9 +109,12 @@ def plot_corners(ax, curr_pos, use_img=False, img=None, plot_action=False, actio
                 box_color = (51,102,0)
             else:
                 box_color = (102,204,0)
-
-            frame_axis = cv2.polylines(blank_image.copy(), np.int32([curr_polygon.reshape((-1,1,2))]),
+            if use_frame_axis:
+                frame_axis = cv2.polylines(frame_axis.copy(), np.int32([curr_polygon.reshape((-1,1,2))]),
                                        isClosed=True, color=box_color, thickness=3)
+            else:
+                frame_axis = cv2.polylines(blank_image.copy(), np.int32([curr_polygon.reshape((-1,1,2))]),
+                                        isClosed=True, color=box_color, thickness=3)
 
         else:
             if color_scheme == 1:

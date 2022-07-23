@@ -91,9 +91,8 @@ class StateDataset:
         return pos
 
     def normalize_corner(self, corner): # Corner.shape: 8.2
-        corner = torch.FloatTensor((corner - self.corner_min) / (self.corner_max - self.corner_min))
-        print('corner.shape: {}'.format(corner.shape))
-        return torch.flatten(corner)
+        corner = (corner - self.corner_min) / (self.corner_max - self.corner_min)
+        return corner
 
     def calculate_rvec_mins_maxs(self):
         rvecs = np.zeros((len(self.pos_rvec_tvec), 2, 3)) # Three axises for each corner - mean should be taken through 0th and 1st axes

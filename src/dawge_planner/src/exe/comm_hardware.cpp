@@ -72,7 +72,7 @@ int mainHelper(int argc, char *argv[],
         highStateROS = ToRos(highStateLCM);
 
         // Publish high state
-        printf("highStateROS.forwardPosition: %f\n", highStateROS.forwardPosition);
+        // printf("highStateROS.forwardPosition: %f\n", highStateROS.forwardPosition);
         pub.publish(highStateROS);
 
         // Send the highCommandLCM
