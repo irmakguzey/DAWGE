@@ -33,12 +33,12 @@ from sensor_msgs.msg import Image
 
 # Custom imports
 from contrastive_learning.tests.test_model import load_lin_model
-from contrastive_learning.tests.test_data import plot_corners
+from contrastive_learning.tests.plotting import plot_corners
 from contrastive_learning.datasets.state_dataset import StateDataset
 from scripts.tasks.high_lvl_task import HighLevelTask
 
 class RunInverseModel(HighLevelTask):
-    def __init__(self, out_dir, data_dir, high_cmd_topic, high_state_topic, rate, color_img_topic, fps=15):
+    def __init__(self, out_dir, high_cmd_topic, high_state_topic, rate, color_img_topic, fps=15):
         HighLevelTask.__init__(self, high_cmd_topic, high_state_topic, rate)
 
         # Create an opencv bridge to save the images
@@ -46,8 +46,10 @@ class RunInverseModel(HighLevelTask):
         self.color_img_msg = None
 
         self.video_fps = fps
-        demo = data_dir.split('/')[-1]
-        self.demo_name = '{}_inverse_model_demo'.format(demo)
+        # demo = data_dir.split('/')[-1]
+        now = datetime.now()
+        time_str = now.strftime('%d%m%Y_%H%M%S')
+        self.demo_name = '{}_inverse_model_demo'.format(time_str)
         self.out_dir = out_dir
         self.images_dir = os.path.join(out_dir,self.demo_name)
         os.makedirs(self.images_dir, exist_ok=True)
@@ -89,7 +91,6 @@ class RunInverseModel(HighLevelTask):
         print('self.lin_model: {}'.format(self.lin_model))
 
         # Initialize the dataset
-        # self.data_dir = data_dir
         # Get the dataset
         self.cfg.data_dir = '/home/irmak/Workspace/DAWGE/src/dawge_planner/data/test_demos' # We will use all the demos
         self.cfg.batch_size = 1
@@ -122,7 +123,7 @@ class RunInverseModel(HighLevelTask):
         with open(os.path.join(self.cfg.data_dir, 'all_next_pos.npy'), 'wb') as f:
             np.save(f, all_next_pos)
 
-    def get_best_next_pos(self, curr_pos): # curr_pos should be normalized
+    def get_best_next_pos(self, curr_pos, k=10): # curr_pos should be normalized
         # Find the closest curr_pos from all_curr_pos.npy
         # Return the corresponding next_pos from the same array
         with open(os.path.join(self.cfg.data_dir, 'all_curr_pos.npy'), 'rb') as f:
@@ -131,24 +132,32 @@ class RunInverseModel(HighLevelTask):
             all_next_pos = np.load(f)
 
         dist = np.linalg.norm(all_curr_pos - curr_pos, axis=1)
-        closest_pos_id = np.argsort(dist)[0]
+        closest_idx = np.argsort(dist)[:10]
 
-        return all_next_pos[closest_pos_id], closest_pos_id
+        return closest_idx
+
+    def action_above_thresh(self, action):
+        # Return true if the given action is above some action
+        # will be used to filter states where not strong enough of an action was applied
+        action = self.dataset.denormalize_action(action[0].cpu().detach().numpy())
+        # print('action: {}'.format(action))
+        # print('action[0]**2 + action[1]**2: {}'.format(action[0]**2 + action[1]**2))
+        thresh = 0.1
+        return action[0]**2 + action[1]**2 > thresh
         
 
     def update_high_cmd(self):
-
-        # try:
-        # Get the next state position from the dataset
-        # _, next_pos, action = next(self.iter_data_loader)
-        # _, next_pos, action = next(iter(self.data_loader))
-        # next_pos = next_pos.to(self.device)
-
         # Normalize the curr_pos
         self.get_corners()
         curr_pos = self.dataset.normalize_corner(self.curr_pos).flatten()
-        next_pos, closest_id = self.get_best_next_pos(curr_pos)
-        _, _, action = self.dataset.getitem(closest_id)
+        # next_pos, closest_id = self.get_best_next_pos(curr_pos)
+        closest_idx = self.get_best_next_pos(curr_pos, k=10)
+        for i,closest_id in enumerate(closest_idx):
+            _, next_pos, action = self.dataset.getitem(closest_id)
+            if self.action_above_thresh(action):
+                print('{}th action is above threshold'.format(i))
+                break
+            print('i: {}, closest_id: {}'.format(i, closest_id))
 
         curr_pos = torch.unsqueeze(torch.FloatTensor(curr_pos), 0).to(self.device)
         next_pos = torch.unsqueeze(torch.FloatTensor(next_pos), 0).to(self.device)
@@ -185,11 +194,6 @@ class RunInverseModel(HighLevelTask):
         cv2.imwrite(os.path.join(self.images_dir, 'frame_{:04d}.png'.format(self.frame)), cv2.cvtColor(frame_axis, cv2.COLOR_RGB2BGR))
         self.pub_marker_image(frame_axis)
 
-        # except StopIteration:
-
-        #     print('Demo Finished - Converting Demo To a Video')
-        #     self.convert_to_video()
-        
     def pub_marker_image(self, frame_axis):
         # cv2_img = cv2.cvtColor(frame_axis, cv2.COLOR_RGB2BGR)
         self.state_msg = self.cv_bridge.cv2_to_imgmsg(frame_axis, "rgb8")
@@ -249,7 +253,7 @@ class RunInverseModel(HighLevelTask):
             self.images_dir,
             color_video_name
         ))
-        # shutil.rmtree(self.color_video_dir, ignore_errors=True)
+        os.shutil.rmtree(self.images_dir, ignore_errors=True)
 
         after_dumping = datetime.now()
         time_spent = after_dumping - before_dumping
@@ -265,7 +269,6 @@ if __name__ == "__main__":
     rospy.init_node('dawge_pli', disable_signals=True) # To convert images to video in the end
     
     task = RunInverseModel(
-        data_dir='/home/irmak/Workspace/DAWGE/src/dawge_planner/data/test_demos/box_marker_35', # We will use test_demos demos
         out_dir='/home/irmak/Workspace/DAWGE/contrastive_learning/out/2022.07.21/15-35_pli_ue_False_lf_mse_fi_1_pt_corners_bs_64_hd_64_lr_0.001_zd_8',
         high_cmd_topic='dawge_high_cmd',
         high_state_topic='dawge_high_state',

@@ -4,29 +4,29 @@ defaults:
     # - encoder: resnet18
     # - trans: mlp
     # - optimizer: adam
-    - agent: pli
-    - optimizer: adam
-    # - agent: sbfd
+    # - agent: pli
     # - optimizer: adam
-    # - trans: mlp
+    - agent: sbfd
+    - optimizer: adam
+    - trans: mlp
 
-model:
-  _target_: contrastive_learning.models.custom_models.LinearInverse
-  input_dim: ??? # They will be set according to the rest of the config
-  action_dim: ???
-  hidden_dim: ???
-
-# pos_encoder: 
-#   _target_: contrastive_learning.models.custom_models.PosToEmbedding
-#   input_dim: ???
+# model:
+#   _target_: contrastive_learning.models.custom_models.LinearInverse
+#   input_dim: ??? # They will be set according to the rest of the config
+#   action_dim: ???
 #   hidden_dim: ???
-#   out_dim: ??? # set it to z_dim
+
+pos_encoder: 
+  _target_: contrastive_learning.models.custom_models.PosToEmbedding
+  input_dim: ???
+  hidden_dim: ???
+  out_dim: ??? # set it to z_dim
 
 
 seed: 42
 device: cuda
 
-agent_type: pli # cpn / pli / sbfd
+agent_type: sbfd # cpn / pli / sbfd
 dataset_type: state # State or visual for now
 pos_type: corners # rvec_tvec / corners
 train_epochs: 1000
@@ -41,7 +41,7 @@ weight_decay: 0
 z_dim: 8 # Positions will be mapped to embeddings
 pos_dim: 8 # this is needed for state based models - rvec: 3 tvec: 3
 hidden_dim: 64 # Expand to 64 first then to z_dim
-action_dim: 2
+action_dim: 4
 
 distributed: true
 num_workers: 4

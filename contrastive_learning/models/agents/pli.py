@@ -8,7 +8,7 @@ from omegaconf import DictConfig, OmegaConf
 from tqdm import tqdm 
 
 # Custom imports 
-from contrastive_learning.utils.losses import mse
+from contrastive_learning.utils.losses import mse, l1
 
 # Agent to get current and next position and predict the action applied
 # It will learn supervised way
@@ -26,6 +26,8 @@ class PLI:
 
         if loss_fn == 'mse': # TODO: try different loss functions?
             self.loss_fn = mse 
+        elif loss_fn == 'l1':
+            self.loss_fn = l1
 
     def to(self, device):
         self.device = device 
