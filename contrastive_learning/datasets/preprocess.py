@@ -9,6 +9,9 @@ from tqdm import tqdm
 
 from unitree_legged_msgs.msg import HighCmd
 
+from contrastive_learning.tests.animate_markers import AnimateMarkers
+from contrastive_learning.tests.animate_rvec_tvec import AnimateRvecTvec
+
 CAMERA_INTRINSICS = np.array([[612.82019043,   0.        , 322.14050293],
                               [  0.        , 611.48303223, 247.9083252 ],
                               [  0.        ,   0.        ,   1.        ]])
@@ -96,6 +99,7 @@ def smoothen_corners(root: str):
     with open(os.path.join(root, 'marker_ids.pickle'), 'rb') as f:
         ids = pickle.load(f)
         
+    print('len(corners): {}, len(ids): {}'.format(len(corners), len(ids)))
     # Shape: (Frame Length, 2:Box and Dog, 4: 4 corners, 2: [x,y])
     frame_len = len(corners)
     corners_np = np.zeros((frame_len, 2, 4, 2))
@@ -199,15 +203,36 @@ def dump_rvec_tvec(root: str, frame_interval: int): # Instead of pos_corners we 
 
 if __name__ == "__main__":
     data_dir = "/home/irmak/Workspace/DAWGE/src/dawge_planner/data/box_marker_10"
-    data_dirs = glob.glob("/home/irmak/Workspace/DAWGE/src/dawge_planner/data/box_marker_*")
+    data_dirs = glob.glob("/home/irmak/Workspace/DAWGE/src/dawge_planner/data/move_demos/*")
     data_dirs = sorted(data_dirs)
     # print('data_dirs: {}'.format(data_dirs))
     # video_type = 'color'
 
     for data_dir in data_dirs:
+        if os.path.exists(os.path.join(data_dir, 'rvec_tvec_animation.mp4')):
+            continue
+        print('data_dir: {}'.format(data_dir))
         smoothen_corners(data_dir)
-        dump_pos_corners(data_dir)
-        dump_rvec_tvec(data_dir)
+        dump_pos_corners(data_dir, frame_interval=1)
+        dump_rvec_tvec(data_dir, frame_interval=1)
+
+        # Test the data with animations
+        AnimateMarkers(
+            data_dir = data_dir, 
+            dump_dir = data_dir, 
+            dump_file = 'corners_animation.mp4',
+            fps = 15,
+            show_predicted_action=False
+        )
+
+        AnimateRvecTvec(
+            data_dir = data_dir, 
+            dump_dir = data_dir, 
+            dump_file = 'rvec_tvec_animation.mp4',
+            fps = 15,
+            show_predicted_action=False
+        )
+
 
     # for data_dir in data_dirs:
     #     print(data_dir)

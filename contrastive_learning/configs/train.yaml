@@ -4,29 +4,29 @@ defaults:
     # - encoder: resnet18
     # - trans: mlp
     # - optimizer: adam
-    # - agent: pli
-    # - optimizer: adam
-    - agent: sbfd
+    - agent: pli
     - optimizer: adam
-    - trans: mlp
+    # - agent: sbfd
+    # - optimizer: adam
+    # - trans: mlp
 
-# model:
-#   _target_: contrastive_learning.models.custom_models.LinearInverse
-#   input_dim: ??? # They will be set according to the rest of the config
-#   action_dim: ???
-#   hidden_dim: ???
-
-pos_encoder: 
-  _target_: contrastive_learning.models.custom_models.PosToEmbedding
-  input_dim: ???
+model:
+  _target_: contrastive_learning.models.custom_models.LinearInverse
+  input_dim: ??? # They will be set according to the rest of the config
+  action_dim: ???
   hidden_dim: ???
-  out_dim: ??? # set it to z_dim
+
+# pos_encoder: 
+#   _target_: contrastive_learning.models.custom_models.PosToEmbedding
+#   input_dim: ???
+#   hidden_dim: ???
+#   out_dim: ??? # set it to z_dim
 
 
 seed: 42
 device: cuda
 
-agent_type: sbfd # cpn / pli / sbfd
+agent_type: pli # cpn / pli / sbfd
 dataset_type: state # State or visual for now
 pos_type: corners # rvec_tvec / corners
 train_epochs: 1000
@@ -36,12 +36,12 @@ train_dset_split: 0.8
 # Hyperparameters to be used everywhere
 batch_size: 64
 lr: 1e-3
-weight_decay: 0
+weight_decay: 1e-5
 # z_dim: 1000 # resnet18 gives out 1000 dimensions (needed for cpn)
 z_dim: 8 # Positions will be mapped to embeddings
 pos_dim: 8 # this is needed for state based models - rvec: 3 tvec: 3
 hidden_dim: 64 # Expand to 64 first then to z_dim
-action_dim: 4
+action_dim: 2
 
 distributed: true
 num_workers: 4
@@ -57,7 +57,7 @@ video_type: color # NOTE: you could remove this if you want to use both
 # this needs to be specified manually
 experiment: ${agent_type}_ue_${agent.use_encoder}_lf_${agent.loss_fn}_fi_${frame_interval}_pt_${pos_type}_bs_${batch_size}_hd_${hidden_dim}_lr_${lr}_zd_${z_dim}
 
-data_dir: /home/irmak/Workspace/DAWGE/src/dawge_planner/data
+data_dir: /home/irmak/Workspace/DAWGE/src/dawge_planner/data/move_demos
 checkpoint_dir: ??? # Will be set to hydra dir inside the code
 
 # logger

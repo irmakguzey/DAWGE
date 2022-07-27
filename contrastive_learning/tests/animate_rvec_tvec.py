@@ -4,7 +4,7 @@ import cv2
 import glob
 import matplotlib
 import math
-# matplotlib.use('Agg')
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import numpy as np
@@ -71,53 +71,6 @@ class AnimateRvecTvec:
         self.img.set_array(self.blank_image.copy())
 
     def animate(self, i):
-
-        # if self.show_predicted_action:
-        #     action = self.pos_rvec_tvec[i][2]
-        #     pred_action = self.predicted_actions[i]
-
-        # # Draw the axis
-        # for j in range(2):
-        #     curr_rvec_tvec = self.pos_rvec_tvec[i][0][j*6:(j+1)*6]
-        #     if j == 0:
-        #         frame_axis = aruco.drawAxis(self.blank_image.copy(),
-        #             CAMERA_INTRINSICS,
-        #             np.zeros((5)),
-        #             curr_rvec_tvec[:3], curr_rvec_tvec[3:],
-        #             0.01)
-        #     else:
-        #         frame_axis = aruco.drawAxis(frame_axis.copy(),
-        #             CAMERA_INTRINSICS,
-        #             np.zeros((5)),
-        #             curr_rvec_tvec[:3], curr_rvec_tvec[3:],
-        #             0.01)
-
-        # # Draw the actions
-        # if self.show_predicted_action: # Action will be drawn to the bottom right corner
-        #     # Actual action
-        #     forward_speed = action[0]
-        #     rotate_speed = action[1]
-        #     self.dir -= rotate_speed
-        #     action_x = forward_speed * math.sin(self.dir) * 500 # 250 is only for scaling
-        #     action_y = forward_speed * math.cos(self.dir) * 500
-        #     # action_arr = patches.Arrow(mean_x, mean_y, -action_x, -action_y, color='c', label='Actual Action') # - is for drawing purposes
-        #     frame_axis = cv2.arrowedLine(frame_axis.copy(), self.action_pos,
-        #                                  (int(self.action_pos[0]+action_x), int(self.action_pos[1]-action_y)), # Y should be removed from the action
-        #                                  color=(0,200,200), thickness=3)
-
-        #     # Predicted action
-        #     forward_speed = pred_action[0]
-        #     rotate_speed = pred_action[1]
-        #     self.pred_dir -= rotate_speed
-        #     action_x = forward_speed * math.sin(self.pred_dir) * 500 # 250 is only for scaling
-        #     action_y = forward_speed * math.cos(self.pred_dir) * 500
-        #     frame_axis = cv2.arrowedLine(frame_axis.copy(), self.action_pos,
-        #                                  (int(self.action_pos[0]+action_x), int(self.action_pos[1]-action_y)), # Y should be removed from the action
-        #                                  color=(104,43,159), thickness=3)
-
-        # self.img.set_array(frame_axis)
-
-
 
         actions = [self.pos_rvec_tvec[i][2]]
         if self.show_predicted_action:

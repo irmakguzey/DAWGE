@@ -2,7 +2,7 @@ import cv2
 import glob
 import matplotlib
 import math
-# matplotlib.use('Agg')
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import numpy as np
@@ -83,14 +83,6 @@ class AnimateMarkers:
         )
         self.anim.save(os.path.join(dump_dir, dump_file), fps=fps, extra_args=['-vcodec', 'libx264'])
         self.pbar.close()
-        print('Animation saved to: {}'.format(os.path.join(dump_dir, dump_file)))
-
-
-        # Create the animation object and save it
-        self.anim = FuncAnimation(
-            self.fig, self.animate, init_func = self.init_fun, frames = num_frames
-        )
-        self.anim.save(os.path.join(dump_dir, dump_file), fps=fps, extra_args=['-vcodec', 'libx264'])
         print('Animation saved to: {}'.format(os.path.join(dump_dir, dump_file)))
 
     def init_fun(self):
