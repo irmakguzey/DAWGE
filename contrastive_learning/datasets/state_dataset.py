@@ -40,7 +40,7 @@ class StateDataset:
             with open(os.path.join(root, 'pos_rvec_tvec.pickle'), 'rb') as f:
                 self.pos_rvec_tvec += pickle.load(f)
 
-        # Calculate mean and std to normalize positions and actions
+        # Calculate mins and maxs to normalize positions and actions
         if cfg.pos_type == 'corners':
             self.action_min, self.action_max, self.corner_min, self.corner_max = self.calculate_corners_mins_maxs()
         elif cfg.pos_type == 'rvec_tvec':
@@ -55,11 +55,11 @@ class StateDataset:
             curr_pos, next_pos, action = self.pos_corners[index]
 
             # Normalize the positions
-            curr_pos = torch.FloatTensor((curr_pos - self.corner_min) / (self.corner_max - self.corner_min))
-            next_pos = torch.FloatTensor((next_pos - self.corner_min) / (self.corner_max - self.corner_min))
+            curr_pos = torch.FloatTensor(self.normalize_corner(curr_pos))
+            next_pos = torch.FloatTensor(self.normalize_corner(next_pos))
 
             # Normalize the actions
-            action = torch.FloatTensor((action - self.action_min) / (self.action_max - self.action_min))
+            action = torch.FloatTensor(self.normalize_action(action))
 
             # return box_pos, dog_pos, next_box_pos, next_dog_pos, action
             return torch.flatten(curr_pos), torch.flatten(next_pos), action
@@ -69,11 +69,11 @@ class StateDataset:
             curr_pos, next_pos, action = self.pos_rvec_tvec[index]
 
             # Normalize the positions - TODO: If this works nicely then delete mean/std approach
-            curr_pos = torch.FloatTensor(self.normalize_pos(curr_pos))
-            next_pos = torch.FloatTensor(self.normalize_pos(next_pos))
+            curr_pos = torch.FloatTensor(self.normalize_rvec_tvec(curr_pos))
+            next_pos = torch.FloatTensor(self.normalize_rvec_tvec(next_pos))
 
             # Normalize the actions
-            action = torch.FloatTensor((action - self.action_min) / (self.action_max - self.action_min))
+            action = torch.FloatTensor(self.normalize_action(action))
 
             # return box_pos, dog_pos, next_box_pos, next_dog_pos, action
             return curr_pos, next_pos, action # TODO: Add index is just so that we could track
@@ -81,7 +81,7 @@ class StateDataset:
     def getitem(self, index): 
         return self.__getitem__(index) # This is to make this method public so that it can be used in 
 
-    def normalize_pos(self, pos): # Pos: [box_rvec, box_tvec, dog_rvec, dog_tvec]
+    def normalize_rvec_tvec(self, pos): # Pos: [box_rvec, box_tvec, dog_rvec, dog_tvec]
         pos[:3] = (pos[:3] - self.rvecs_min) / (self.rvecs_max - self.rvecs_min)
         pos[6:9] = (pos[6:9] - self.rvecs_min) / (self.rvecs_max - self.rvecs_min)
 
@@ -91,8 +91,26 @@ class StateDataset:
         return pos
 
     def normalize_corner(self, corner): # Corner.shape: 8.2
-        corner = (corner - self.corner_min) / (self.corner_max - self.corner_min)
-        return corner
+        return (corner - self.corner_min) / (self.corner_max - self.corner_min)
+
+    def normalize_action(self, action):
+        return (action - self.action_min) / (self.action_max - self.action_min)
+
+    def calculate_corners_means_stds(self):
+        corners = np.zeros((len(self.pos_corners), 8,2))
+        actions = np.zeros((len(self.pos_corners), 2))
+        for i in range(len(self.pos_corners)):
+            corners[i,:] = self.pos_corners[i][0]
+            actions[i,0] = self.pos_corners[i][2][0]
+            actions[i,1] = self.pos_corners[i][2][1]
+
+        action_mean, action_std = actions.mean(axis=0), actions.std(axis=0)
+        corner_mean, corner_std = corners.mean(axis=(0,1)), corners.std(axis=(0,1))
+        # Expand corner mean and std to be able to make element wise operations with them
+        corner_mean, corner_std = np.expand_dims(corner_mean, axis=0), np.expand_dims(corner_std, axis=0)
+        corner_mean, corner_std = np.repeat(corner_mean, 8, axis=0), np.repeat(corner_std, 8, axis=0) # 8: 4*2 (4 corners and 2 markers)
+
+        return action_mean, action_std, corner_mean, corner_std
 
     def calculate_rvec_mins_maxs(self):
         rvecs = np.zeros((len(self.pos_rvec_tvec), 2, 3)) # Three axises for each corner - mean should be taken through 0th and 1st axes

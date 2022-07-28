@@ -16,11 +16,11 @@ model:
   action_dim: ???
   hidden_dim: ???
 
-# pos_encoder: 
-#   _target_: contrastive_learning.models.custom_models.PosToEmbedding
-#   input_dim: ???
-#   hidden_dim: ???
-#   out_dim: ??? # set it to z_dim
+pos_encoder: 
+  _target_: contrastive_learning.models.custom_models.PosToEmbedding
+  input_dim: ???
+  hidden_dim: ???
+  out_dim: ??? # set it to z_dim
 
 
 seed: 42

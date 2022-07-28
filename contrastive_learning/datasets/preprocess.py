@@ -202,10 +202,10 @@ def dump_rvec_tvec(root: str, frame_interval: int): # Instead of pos_corners we 
     
 
 if __name__ == "__main__":
-    data_dir = "/home/irmak/Workspace/DAWGE/src/dawge_planner/data/box_marker_10"
-    data_dirs = glob.glob("/home/irmak/Workspace/DAWGE/src/dawge_planner/data/move_demos/*")
+    # data_dir = "/home/irmak/Workspace/DAWGE/src/dawge_planner/data/box_marker_10"
+    data_dirs = glob.glob("/home/irmak/Workspace/DAWGE/src/dawge_planner/data/test_demos/box_marker_*")
     data_dirs = sorted(data_dirs)
-    # print('data_dirs: {}'.format(data_dirs))
+    print('data_dirs: {}'.format(data_dirs))
     # video_type = 'color'
 
     for data_dir in data_dirs:

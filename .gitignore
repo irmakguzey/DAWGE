@@ -153,3 +153,4 @@ src/dawge_planner/scripts/aruco_markers/data
 
 # Test videos 
 contrastive_learning/tests/animations/*
+contrastive_learning/tests/plots/*

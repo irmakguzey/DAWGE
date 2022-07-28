@@ -25,6 +25,7 @@ CAMERA_INTRINSICS = np.array([[612.82019043,   0.        , 322.14050293],
 
 def plot_corners(ax, curr_pos, use_img=False, img=None, use_frame_axis=False, frame_axis=None, plot_action=False, actions=None, color_scheme=1):
     # actions: [action, pred_action]
+    # curr_pos.shapeL: (8,2)
     
     img_shape = (720, 1280, 3)
     blank_image = np.ones(img_shape, np.uint8) * 255
@@ -34,24 +35,21 @@ def plot_corners(ax, curr_pos, use_img=False, img=None, use_frame_axis=False, fr
     # Plot the boxed
     for j in range(2):
         curr_polygon = curr_pos[j*4:(j+1)*4,:]
+        if color_scheme == 1: # Actual corners - blue ones
+            box_color = (0,0,255)
+            dog_color = (0,0,153)
+        else: # Predicted corners - predicted green ones
+            box_color = (102,204,0)
+            dog_color = (51,102,0)
+
         if j == 0: # Show the box position
-            if color_scheme == 1:
-                box_color = (51,102,0)
-            else:
-                box_color = (102,204,0)
             if use_frame_axis:
                 frame_axis = cv2.polylines(frame_axis.copy(), np.int32([curr_polygon.reshape((-1,1,2))]),
                                        isClosed=True, color=box_color, thickness=3)
             else:
                 frame_axis = cv2.polylines(blank_image.copy(), np.int32([curr_polygon.reshape((-1,1,2))]),
                                         isClosed=True, color=box_color, thickness=3)
-
         else:
-            if color_scheme == 1:
-                dog_color = (0,0,153)
-            else:
-                dog_color = (0,0,255)
-
             frame_axis = cv2.polylines(frame_axis.copy(), np.int32([curr_polygon.reshape((-1,1,2))]),
                                        isClosed=True, color=dog_color, thickness=3)
 
