@@ -35,7 +35,7 @@ from sensor_msgs.msg import Image
 from contrastive_learning.tests.test_model import load_lin_model
 from contrastive_learning.tests.plotting import plot_corners
 from contrastive_learning.datasets.state_dataset import StateDataset
-from scripts.tasks.high_lvl_task import HighLevelTask
+from dawge_planner.tasks.high_lvl_task import HighLevelTask
 
 class RunInverseModel(HighLevelTask):
     def __init__(self, out_dir, high_cmd_topic, high_state_topic, rate, color_img_topic, fps=15):

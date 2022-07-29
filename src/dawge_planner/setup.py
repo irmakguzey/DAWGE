@@ -6,3 +6,10 @@ d = generate_distutils_setup(
     package_dir={'': 'scripts'}
 )
 setup(**d)
+
+# from setuptools import find_packages, setup
+
+# setup(
+#     name="dawge_planner",
+#     packages=find_packages(), # find_packages are not installing any extra packages for now
+# )
