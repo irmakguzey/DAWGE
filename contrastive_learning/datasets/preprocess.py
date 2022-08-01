@@ -99,7 +99,7 @@ def smoothen_corners(root: str):
     with open(os.path.join(root, 'marker_ids.pickle'), 'rb') as f:
         ids = pickle.load(f)
         
-    print('len(corners): {}, len(ids): {}'.format(len(corners), len(ids)))
+    # print('len(corners): {}, len(ids): {}'.format(len(corners), len(ids)))
     # Shape: (Frame Length, 2:Box and Dog, 4: 4 corners, 2: [x,y])
     frame_len = len(corners)
     corners_np = np.zeros((frame_len, 2, 4, 2))
@@ -139,6 +139,14 @@ def smoothen_corners(root: str):
     with open(os.path.join(root, 'smoothened_corners.npy'), 'wb') as f:
         np.save(f, corners_np)
 
+
+# def action_above_thresh(action):
+#     # Return true if the given action is above some action
+#     # will be used to filter states where not strong enough of an action was applied
+#     action = self.dataset.denormalize_action(action[0].cpu().detach().numpy())
+#     thresh = 0.1
+#     return 
+
 # Load corners_np and commands.pickle and dump them in a similar fashion to pos pairs
 def dump_pos_corners(root: str, frame_interval: int):
     pos_corners = [] # Will have curr dog and box, next dog and box pos and action applied between
@@ -156,11 +164,12 @@ def dump_pos_corners(root: str, frame_interval: int):
 
     for i in valid_idx[:-frame_interval]:
         action = (commands[i].forwardSpeed, commands[i].rotateSpeed)
-        pos_corners.append((
-            np.concatenate((smth_corners[i,0,:], smth_corners[i,1,:])), # Current box and dog position
-            np.concatenate((smth_corners[i+frame_interval,0,:], smth_corners[i+frame_interval,1,:])), # Next box and dog position
-            action # action
-        ))
+        if action[0]**2 + action[1]**2 > 0.01: # Actions are filtered this way - not all the frames will be added to the dataset
+            pos_corners.append((
+                np.concatenate((smth_corners[i,0,:], smth_corners[i,1,:])), # Current box and dog position
+                np.concatenate((smth_corners[i+frame_interval,0,:], smth_corners[i+frame_interval,1,:])), # Next box and dog position
+                action # action
+            ))
 
     with open(os.path.join(root, 'pos_corners.pickle'), 'wb') as f:
         pickle.dump(pos_corners, f)
@@ -191,11 +200,12 @@ def dump_rvec_tvec(root: str, frame_interval: int): # Instead of pos_corners we 
     pos_rvec_tvec = [] # [box_rvec, box_tvec, dog_rvec, dog_tvec] is wanted
     for i in valid_idx[:-frame_interval]:
         action = (commands[i].forwardSpeed, commands[i].rotateSpeed)
-        pos_rvec_tvec.append((
-            get_rvec_tvec(smth_corners[i,:,:]),
-            get_rvec_tvec(smth_corners[i+frame_interval,:,:]),
-            action
-        ))
+        if action[0]**2 + action[1]**2 > 0.01:
+            pos_rvec_tvec.append((
+                get_rvec_tvec(smth_corners[i,:,:]),
+                get_rvec_tvec(smth_corners[i+frame_interval,:,:]),
+                action
+            ))
 
     with open(os.path.join(root, 'pos_rvec_tvec.pickle'), 'wb') as f:
         pickle.dump(pos_rvec_tvec, f)
@@ -209,29 +219,29 @@ if __name__ == "__main__":
     # video_type = 'color'
 
     for data_dir in data_dirs:
-        if os.path.exists(os.path.join(data_dir, 'rvec_tvec_animation.mp4')):
-            continue
+        # if os.path.exists(os.path.join(data_dir, 'rvec_tvec_animation.mp4')):
+        #     continue
         print('data_dir: {}'.format(data_dir))
         smoothen_corners(data_dir)
         dump_pos_corners(data_dir, frame_interval=1)
         dump_rvec_tvec(data_dir, frame_interval=1)
 
         # Test the data with animations
-        AnimateMarkers(
-            data_dir = data_dir, 
-            dump_dir = data_dir, 
-            dump_file = 'corners_animation.mp4',
-            fps = 15,
-            show_predicted_action=False
-        )
+        # AnimateMarkers(
+        #     data_dir = data_dir, 
+        #     dump_dir = data_dir, 
+        #     dump_file = 'corners_animation.mp4',
+        #     fps = 15,
+        #     show_predicted_action=False
+        # )
 
-        AnimateRvecTvec(
-            data_dir = data_dir, 
-            dump_dir = data_dir, 
-            dump_file = 'rvec_tvec_animation.mp4',
-            fps = 15,
-            show_predicted_action=False
-        )
+        # AnimateRvecTvec(
+        #     data_dir = data_dir, 
+        #     dump_dir = data_dir, 
+        #     dump_file = 'rvec_tvec_animation.mp4',
+        #     fps = 15,
+        #     show_predicted_action=False
+        # )
 
 
     # for data_dir in data_dirs:

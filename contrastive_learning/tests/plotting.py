@@ -34,7 +34,7 @@ def plot_corners(ax, curr_pos, use_img=False, img=None, use_frame_axis=False, fr
 
     # Plot the boxed
     for j in range(2):
-        curr_polygon = curr_pos[j*4:(j+1)*4,:]
+        curr_polygon = curr_pos[j*4:(j+1)*4,:] # First position is box's the second one is dog's
         if color_scheme == 1: # Actual corners - blue ones
             box_color = (0,0,255)
             dog_color = (0,0,153)
@@ -45,13 +45,13 @@ def plot_corners(ax, curr_pos, use_img=False, img=None, use_frame_axis=False, fr
         if j == 0: # Show the box position
             if use_frame_axis:
                 frame_axis = cv2.polylines(frame_axis.copy(), np.int32([curr_polygon.reshape((-1,1,2))]),
-                                       isClosed=True, color=box_color, thickness=3)
+                                       isClosed=False, color=box_color, thickness=3)
             else:
                 frame_axis = cv2.polylines(blank_image.copy(), np.int32([curr_polygon.reshape((-1,1,2))]),
-                                        isClosed=True, color=box_color, thickness=3)
+                                        isClosed=False, color=box_color, thickness=3)
         else:
             frame_axis = cv2.polylines(frame_axis.copy(), np.int32([curr_polygon.reshape((-1,1,2))]),
-                                       isClosed=True, color=dog_color, thickness=3)
+                                       isClosed=False, color=dog_color, thickness=3)
 
     if plot_action:
         frame_axis = plot_actions(actions, frame_axis)

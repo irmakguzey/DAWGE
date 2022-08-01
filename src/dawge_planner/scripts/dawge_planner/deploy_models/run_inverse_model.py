@@ -22,8 +22,10 @@ import matplotlib.pyplot as plt
 import matplotlib
 import torch
 import torch.utils.data as data 
+import shutil
 matplotlib.use('Agg')
 
+from copy import deepcopy
 from cv2 import aruco
 from datetime import datetime
 from omegaconf import DictConfig, OmegaConf
@@ -38,7 +40,7 @@ from contrastive_learning.datasets.state_dataset import StateDataset
 from dawge_planner.tasks.high_lvl_task import HighLevelTask
 
 class RunInverseModel(HighLevelTask):
-    def __init__(self, out_dir, high_cmd_topic, high_state_topic, rate, color_img_topic, fps=15):
+    def __init__(self, out_dir, video_dump_dir, high_cmd_topic, high_state_topic, rate, color_img_topic, fps=15):
         HighLevelTask.__init__(self, high_cmd_topic, high_state_topic, rate)
 
         # Create an opencv bridge to save the images
@@ -46,11 +48,11 @@ class RunInverseModel(HighLevelTask):
         self.color_img_msg = None
 
         self.video_fps = fps
-        # demo = data_dir.split('/')[-1]
         now = datetime.now()
         time_str = now.strftime('%d%m%Y_%H%M%S')
         self.demo_name = '{}_inverse_model_demo'.format(time_str)
         self.out_dir = out_dir
+        self.video_dump_dir = video_dump_dir
         self.images_dir = os.path.join(out_dir,self.demo_name)
         os.makedirs(self.images_dir, exist_ok=True)
         self.frame = 0
@@ -76,7 +78,7 @@ class RunInverseModel(HighLevelTask):
         # Initialize the process group
         # Start the multiprocessing to load the saved models properly
         os.environ["MASTER_ADDR"] = "localhost"
-        os.environ["MASTER_PORT"] = "29504"
+        os.environ["MASTER_PORT"] = "29505"
 
         torch.distributed.init_process_group(backend='gloo', rank=0, world_size=1)
         torch.cuda.set_device(0)
@@ -94,8 +96,12 @@ class RunInverseModel(HighLevelTask):
         # Get the dataset
         self.cfg.data_dir = '/home/irmak/Workspace/DAWGE/src/dawge_planner/data/test_demos' # We will use all the demos
         self.cfg.batch_size = 1
-        self.dataset = StateDataset(self.cfg)
+        dataset_cfg = deepcopy(self.cfg)
+        dataset_cfg.pos_ref = 'global' # Dataset will always give global positions, this will help when finding the knn matches
+        self.dataset = StateDataset(dataset_cfg)
         
+        # print('self.cfg.pos_ref: {}'.format(self.cfg.pos_ref))
+
         self.waiting_counter = 0
         self.is_init_var = False
 
@@ -104,35 +110,25 @@ class RunInverseModel(HighLevelTask):
     # Method to dump all the positions to test_demos
     def dump_all_pos(self):
         self.data_loader = data.DataLoader(self.dataset, batch_size=1, shuffle=False, num_workers=4) # In each step next pos will be taken one by one
-        # self.iter_data_loader = iter(self.data_loader)
         pbar = tqdm(total=len(self.data_loader))
         all_curr_pos = np.zeros((len(self.dataset), self.cfg.pos_dim*2))
-        all_next_pos = np.zeros((len(self.dataset), self.cfg.pos_dim*2))
         bs = self.cfg.batch_size
         for i,batch in enumerate(self.data_loader):
-            curr_pos, next_pos, _ = [b.to(self.device) for b in batch]
-            print('curr_pos.shape: {}, all_curr_pos[i*bs:(i+1)*bs, :].shape: {}'.format(
-                curr_pos.shape, all_curr_pos[i*bs:(i+1)*bs, :].shape
-            ))
+            curr_pos, _, _ = [b.to(self.device) for b in batch] # These are normalized
             all_curr_pos[i*bs:(i+1)*bs, :] = curr_pos.cpu().detach().numpy()
-            all_next_pos[i*bs:(i+1)*bs, :] = next_pos.cpu().detach().numpy()
             pbar.update(1)
 
         with open(os.path.join(self.cfg.data_dir, 'all_curr_pos.npy'), 'wb') as f:
             np.save(f, all_curr_pos)
-        with open(os.path.join(self.cfg.data_dir, 'all_next_pos.npy'), 'wb') as f:
-            np.save(f, all_next_pos)
 
     def get_best_next_pos(self, curr_pos, k=10): # curr_pos should be normalized
         # Find the closest curr_pos from all_curr_pos.npy
         # Return the corresponding next_pos from the same array
         with open(os.path.join(self.cfg.data_dir, 'all_curr_pos.npy'), 'rb') as f:
             all_curr_pos = np.load(f)
-        with open(os.path.join(self.cfg.data_dir, 'all_next_pos.npy'), 'rb') as f:
-            all_next_pos = np.load(f)
 
         dist = np.linalg.norm(all_curr_pos - curr_pos, axis=1)
-        closest_idx = np.argsort(dist)[:10]
+        closest_idx = np.argsort(dist)[:k]
 
         return closest_idx
 
@@ -140,43 +136,59 @@ class RunInverseModel(HighLevelTask):
         # Return true if the given action is above some action
         # will be used to filter states where not strong enough of an action was applied
         action = self.dataset.denormalize_action(action[0].cpu().detach().numpy())
-        # print('action: {}'.format(action))
-        # print('action[0]**2 + action[1]**2: {}'.format(action[0]**2 + action[1]**2))
-        thresh = 0.1
+        thresh = 0.01
         return action[0]**2 + action[1]**2 > thresh
         
 
     def update_high_cmd(self):
         # Normalize the curr_pos
         self.get_corners()
-        curr_pos = self.dataset.normalize_corner(self.curr_pos).flatten()
-        # next_pos, closest_id = self.get_best_next_pos(curr_pos)
-        closest_idx = self.get_best_next_pos(curr_pos, k=10)
+        curr_pos = self.dataset.normalize_corner(self.curr_pos).flatten() # This pos is global
+
+        closest_idx = self.get_best_next_pos(curr_pos, k=50)
         for i,closest_id in enumerate(closest_idx):
-            _, next_pos, action = self.dataset.getitem(closest_id)
+            _, next_pos, action = self.dataset.getitem(closest_id) # next_pos is also global
             if self.action_above_thresh(action):
-                print('{}th action is above threshold'.format(i))
                 break
-            print('i: {}, closest_id: {}'.format(i, closest_id))
 
         curr_pos = torch.unsqueeze(torch.FloatTensor(curr_pos), 0).to(self.device)
         next_pos = torch.unsqueeze(torch.FloatTensor(next_pos), 0).to(self.device)
 
-        print('curr_pos: {}, next_pos: {}'.format(curr_pos, next_pos))
-        pred_action = self.lin_model(curr_pos, next_pos)
+        # Take the reference here
+        ref_tensor = torch.zeros((curr_pos.shape))
+        half_idx = int(curr_pos.shape[1] / 2) # In order not to have a control for pos_type
+        if self.cfg.pos_ref == 'dog':
+            ref_tensor = curr_pos[:,half_idx:]
+            ref_tensor = ref_tensor.repeat(1,2)
+        elif self.cfg.pos_ref == 'box':
+            ref_tensor = curr_pos[:,:half_idx]
+            ref_tensor = ref_tensor.repeat(1,2)
 
-        # Denormalize the action
-        print('pred_action.shape: {}, action.shape: {}'.format(
-            pred_action.shape, action.shape
-        ))
+        pred_action = self.lin_model(curr_pos-ref_tensor, next_pos-ref_tensor)
+
+        # Denormalize the action``
         pred_action = self.dataset.denormalize_action(pred_action[0].cpu().detach().numpy()) # NOTE: what is the 0 for?
         action = self.dataset.denormalize_action(action.cpu().detach().numpy())
+        # Make both of the actions be a bit slower - predicted action turns out to be way faster
+        # pred_action /= 5 # Rotation can be very slow
+        if abs(pred_action[1]) > 0.2:
+            if pred_action[1] < 0:
+                pred_action[1] = -0.2
+            else:
+                pred_action[1] = 0.2
+
+        if abs(pred_action[0]) > 0.15:
+            if pred_action[0] < 0:
+                pred_action[0] = -0.15
+            else:
+                pred_action[0] = 0.15
+
         print('pred_action: {}, action: {}'.format(pred_action, action))
 
         # Update the high level command
         self.high_cmd_msg.mode = 2
-        self.high_cmd_msg.forwardSpeed = pred_action[0]
-        self.high_cmd_msg.rotateSpeed = pred_action[1]
+        self.high_cmd_msg.forwardSpeed = pred_action[0] / 2
+        self.high_cmd_msg.rotateSpeed = pred_action[1] / 2
 
         # Plot and publish the positions
         _, frame_axis = plot_corners(
@@ -208,14 +220,12 @@ class RunInverseModel(HighLevelTask):
         aruco_dict = aruco.Dictionary_get(aruco.DICT_6X6_250)
         parameters =  aruco.DetectorParameters_create()
         curr_corners, curr_ids, _ = aruco.detectMarkers(gray, aruco_dict, parameters=parameters)
-        # print('curr_corners: {}'.format(curr_corners))
 
         for i in range(len(curr_corners)): # Number of markers
             if curr_ids[i] == 1:
                 self.curr_pos[:4,:] = curr_corners[i][0,:]
             elif curr_ids[i] == 2:
                 self.curr_pos[4:,:] = curr_corners[i][0,:]
-
 
     def is_initialized(self):
         if not self.is_init_var:
@@ -247,17 +257,17 @@ class RunInverseModel(HighLevelTask):
     def convert_to_video(self): 
         before_dumping = datetime.now()
 
-        color_video_name = '{}/{}.mp4'.format(self.out_dir, self.demo_name)
+        color_video_name = '{}/{}.mp4'.format(self.video_dump_dir, self.demo_name)
         os.system('ffmpeg -f image2 -r {} -i {}/%*.png -vcodec libx264 -profile:v high444 -pix_fmt yuv420p {}'.format(
             self.video_fps, # fps
             self.images_dir,
             color_video_name
         ))
-        os.shutil.rmtree(self.images_dir, ignore_errors=True)
+        shutil.rmtree(self.images_dir, ignore_errors=True)
 
         after_dumping = datetime.now()
         time_spent = after_dumping - before_dumping
-        print('DUMPING DONE in {} minutes\n-------------'.format(time_spent.seconds / 60.))
+        print('DUMPING DONE to {} in {} minutes\n-------------'.format(color_video_name, time_spent.seconds / 60.))
 
     
     def end_signal_handler(self, signum, frame):
@@ -269,7 +279,8 @@ if __name__ == "__main__":
     rospy.init_node('dawge_pli', disable_signals=True) # To convert images to video in the end
     
     task = RunInverseModel(
-        out_dir='/home/irmak/Workspace/DAWGE/contrastive_learning/out/2022.07.21/15-35_pli_ue_False_lf_mse_fi_1_pt_corners_bs_64_hd_64_lr_0.001_zd_8',
+        out_dir='/home/irmak/Workspace/DAWGE/contrastive_learning/out/2022.07.29/16-37_pli_ref_dog_lf_mse_fi_1_pt_corners_bs_64_hd_64_lr_0.001_zd_8',
+        video_dump_dir='/home/irmak/Workspace/DAWGE/src/dawge_planner/data/deployments',
         high_cmd_topic='dawge_high_cmd',
         high_state_topic='dawge_high_state',
         rate=100, # TODO: Maybe take a look at this?
@@ -277,6 +288,6 @@ if __name__ == "__main__":
         fps=15
     )
 
-    # task.dump_all_pos() # NOTE: delete this afterwards
+    task.dump_all_pos() # NOTE: delete this afterwards
 
     task.run()

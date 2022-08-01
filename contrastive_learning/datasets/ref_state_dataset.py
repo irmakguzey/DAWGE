@@ -28,8 +28,6 @@ class StateDataset:
         #     dump_pos_corners(root, cfg.frame_interval)
         #     dump_rvec_tvec(root, cfg.frame_interval)
 
-        print('DATASET POS_REF: {}'.format(cfg.pos_ref))
-
         # Little check about the reference of the model
         if not 'pos_ref' in self.cfg:
             self.cfg.pos_ref = 'global'
@@ -68,6 +66,8 @@ class StateDataset:
             # Normalize the positions
             curr_pos = torch.FloatTensor(self.normalize_corner(curr_pos)) # Will reduce curr_pos's dog or box position from everything
             next_pos = torch.FloatTensor(self.normalize_corner(next_pos))
+
+            print('curr_pos.shape: {}, next_pos.shape: {}'.format(curr_pos.shape, next_pos.shape))
 
             # Add reference
             ref_tensor = torch.zeros((curr_pos.shape))
@@ -197,20 +197,18 @@ class StateDataset:
         return pos
 
 
+if __name__ == '__main__':
+    cfg = OmegaConf.load('/home/irmak/Workspace/DAWGE/contrastive_learning/configs/train.yaml')
+    cfg.batch_size = 1
+    cfg.pos_ref = 'dog'
+    dset = StateDataset(cfg=cfg)
 
-# if __name__ == '__main__':
-#     cfg = OmegaConf.load('/home/irmak/Workspace/DAWGE/contrastive_learning/configs/train.yaml')
-#     cfg.batch_size = 1
-#     dset = StateDataset(
-#         data_dir = cfg.data_dir
-#     )
-
-#     data_loader = data.DataLoader(dset, batch_size=cfg.batch_size, shuffle=False, num_workers=cfg.num_workers)
-#     batch = next(iter(data_loader))
-#     curr_pos, next_pos, action, _ = [b for b in batch]
-#     print('curr_pos: {}, next_pos: {}, action: {}'.format(
-#         curr_pos, next_pos, action
-#     ))
+    data_loader = data.DataLoader(dset, batch_size=cfg.batch_size, shuffle=False, num_workers=cfg.num_workers)
+    batch = next(iter(data_loader))
+    curr_pos, next_pos, action = [b for b in batch]
+    print('curr_pos: {}, next_pos: {}, action: {}'.format(
+        curr_pos, next_pos, action
+    ))
     # print(dset.getitem(0))
     # print(len(dset))
 
