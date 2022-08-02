@@ -213,7 +213,7 @@ def dump_rvec_tvec(root: str, frame_interval: int): # Instead of pos_corners we 
 
 if __name__ == "__main__":
     # data_dir = "/home/irmak/Workspace/DAWGE/src/dawge_planner/data/box_marker_10"
-    data_dirs = glob.glob("/home/irmak/Workspace/DAWGE/src/dawge_planner/data/test_demos/box_marker_*")
+    data_dirs = glob.glob("/home/irmak/Workspace/DAWGE/src/dawge_planner/data/play_demos/box_marker_*")
     data_dirs = sorted(data_dirs)
     print('data_dirs: {}'.format(data_dirs))
     # video_type = 'color'
@@ -227,21 +227,21 @@ if __name__ == "__main__":
         dump_rvec_tvec(data_dir, frame_interval=1)
 
         # Test the data with animations
-        # AnimateMarkers(
-        #     data_dir = data_dir, 
-        #     dump_dir = data_dir, 
-        #     dump_file = 'corners_animation.mp4',
-        #     fps = 15,
-        #     show_predicted_action=False
-        # )
+        AnimateMarkers(
+            data_dir = data_dir, 
+            dump_dir = data_dir, 
+            dump_file = 'corners_animation.mp4',
+            fps = 15,
+            show_predicted_action=False
+        )
 
-        # AnimateRvecTvec(
-        #     data_dir = data_dir, 
-        #     dump_dir = data_dir, 
-        #     dump_file = 'rvec_tvec_animation.mp4',
-        #     fps = 15,
-        #     show_predicted_action=False
-        # )
+        AnimateRvecTvec(
+            data_dir = data_dir, 
+            dump_dir = data_dir, 
+            dump_file = 'rvec_tvec_animation.mp4',
+            fps = 15,
+            show_predicted_action=False
+        )
 
 
     # for data_dir in data_dirs:

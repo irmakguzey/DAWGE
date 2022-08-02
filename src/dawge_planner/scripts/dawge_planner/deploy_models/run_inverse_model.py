@@ -132,6 +132,17 @@ class RunInverseModel(HighLevelTask):
 
         return closest_idx
 
+    def is_out_of_distribution(self, curr_pos):
+        with open(os.path.join(self.cfg.data_dir, 'all_curr_pos.npy'), 'rb') as f:
+            all_curr_pos = np.load(f)
+
+        dist = np.linalg.norm(all_curr_pos - curr_pos, axis=1)
+        dist.sort()
+
+        dist_sum = sum(dist[:10]) # This is set as 10 bc that was how tests were calculated
+        print('DIST SUM: {}'.format(dist_sum))
+        return dist_sum > 1.0 # Usually the states where 
+
     def action_above_thresh(self, action):
         # Return true if the given action is above some action
         # will be used to filter states where not strong enough of an action was applied
@@ -144,6 +155,11 @@ class RunInverseModel(HighLevelTask):
         # Normalize the curr_pos
         self.get_corners()
         curr_pos = self.dataset.normalize_corner(self.curr_pos).flatten() # This pos is global
+
+        # Check if the current position is out of distribution
+        if self.is_out_of_distribution(curr_pos):
+            print('STATE OUT OF DISTRIBUTION!!!')
+            return # Don't change anything if we have gone out of distribution
 
         closest_idx = self.get_best_next_pos(curr_pos, k=50)
         for i,closest_id in enumerate(closest_idx):
@@ -176,7 +192,6 @@ class RunInverseModel(HighLevelTask):
                 pred_action[1] = -0.2
             else:
                 pred_action[1] = 0.2
-
         if abs(pred_action[0]) > 0.15:
             if pred_action[0] < 0:
                 pred_action[0] = -0.15
@@ -187,7 +202,7 @@ class RunInverseModel(HighLevelTask):
 
         # Update the high level command
         self.high_cmd_msg.mode = 2
-        self.high_cmd_msg.forwardSpeed = pred_action[0] / 2
+        self.high_cmd_msg.forwardSpeed = pred_action[0] / 2 # To make sure the action is applied slowly
         self.high_cmd_msg.rotateSpeed = pred_action[1] / 2
 
         # Plot and publish the positions

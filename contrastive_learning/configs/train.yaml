@@ -58,7 +58,7 @@ video_type: color # NOTE: you could remove this if you want to use both
 # this needs to be specified manually
 experiment: ${agent_type}_ref_${pos_ref}_lf_${agent.loss_fn}_fi_${frame_interval}_pt_${pos_type}_bs_${batch_size}_hd_${hidden_dim}_lr_${lr}_zd_${z_dim}
 
-data_dir: /home/irmak/Workspace/DAWGE/src/dawge_planner/data/old_demos
+data_dir: /home/irmak/Workspace/DAWGE/src/dawge_planner/data/box_orientation_2_demos/train_demos
 checkpoint_dir: ??? # Will be set to hydra dir inside the code
 
 # logger
