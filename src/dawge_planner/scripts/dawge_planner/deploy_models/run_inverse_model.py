@@ -94,7 +94,7 @@ class RunInverseModel(HighLevelTask):
 
         # Initialize the dataset
         # Get the dataset
-        self.cfg.data_dir = '/home/irmak/Workspace/DAWGE/src/dawge_planner/data/test_demos' # We will use all the demos
+        self.cfg.data_dir = '/home/irmak/Workspace/DAWGE/src/dawge_planner/data/box_orientation_1_demos/test_demos' # We will use all the demos
         self.cfg.batch_size = 1
         dataset_cfg = deepcopy(self.cfg)
         dataset_cfg.pos_ref = 'global' # Dataset will always give global positions, this will help when finding the knn matches
@@ -141,13 +141,13 @@ class RunInverseModel(HighLevelTask):
 
         dist_sum = sum(dist[:10]) # This is set as 10 bc that was how tests were calculated
         print('DIST SUM: {}'.format(dist_sum))
-        return dist_sum > 1.0 # Usually the states where 
+        return dist_sum > 2.0 # Usually the states where 
 
     def action_above_thresh(self, action):
         # Return true if the given action is above some action
         # will be used to filter states where not strong enough of an action was applied
         action = self.dataset.denormalize_action(action[0].cpu().detach().numpy())
-        thresh = 0.01
+        thresh = 0
         return action[0]**2 + action[1]**2 > thresh
         
 
@@ -159,7 +159,7 @@ class RunInverseModel(HighLevelTask):
         # Check if the current position is out of distribution
         if self.is_out_of_distribution(curr_pos):
             print('STATE OUT OF DISTRIBUTION!!!')
-            return # Don't change anything if we have gone out of distribution
+            # return # Don't change anything if we have gone out of distribution
 
         closest_idx = self.get_best_next_pos(curr_pos, k=50)
         for i,closest_id in enumerate(closest_idx):
@@ -187,22 +187,22 @@ class RunInverseModel(HighLevelTask):
         action = self.dataset.denormalize_action(action.cpu().detach().numpy())
         # Make both of the actions be a bit slower - predicted action turns out to be way faster
         # pred_action /= 5 # Rotation can be very slow
-        if abs(pred_action[1]) > 0.2:
+        if abs(pred_action[1]) > 0.3:
             if pred_action[1] < 0:
-                pred_action[1] = -0.2
+                pred_action[1] = -0.3
             else:
-                pred_action[1] = 0.2
-        if abs(pred_action[0]) > 0.15:
-            if pred_action[0] < 0:
-                pred_action[0] = -0.15
-            else:
-                pred_action[0] = 0.15
+                pred_action[1] = 0.3
+        # if abs(pred_action[0]) > 0.15:
+        #     if pred_action[0] < 0:
+        #         pred_action[0] = -0.15
+        #     else:
+        #         pred_action[0] = 0.15
 
         print('pred_action: {}, action: {}'.format(pred_action, action))
 
         # Update the high level command
         self.high_cmd_msg.mode = 2
-        self.high_cmd_msg.forwardSpeed = pred_action[0] / 2 # To make sure the action is applied slowly
+        self.high_cmd_msg.forwardSpeed = pred_action[0] # To make sure the action is applied slowly
         self.high_cmd_msg.rotateSpeed = pred_action[1] / 2
 
         # Plot and publish the positions
@@ -294,7 +294,7 @@ if __name__ == "__main__":
     rospy.init_node('dawge_pli', disable_signals=True) # To convert images to video in the end
     
     task = RunInverseModel(
-        out_dir='/home/irmak/Workspace/DAWGE/contrastive_learning/out/2022.07.29/16-37_pli_ref_dog_lf_mse_fi_1_pt_corners_bs_64_hd_64_lr_0.001_zd_8',
+        out_dir='/home/irmak/Workspace/DAWGE/contrastive_learning/out/2022.08.03/19-59_pli_ref_dog_lf_mse_fi_1_pt_corners_bs_64_hd_64_lr_0.001_zd_8',
         video_dump_dir='/home/irmak/Workspace/DAWGE/src/dawge_planner/data/deployments',
         high_cmd_topic='dawge_high_cmd',
         high_state_topic='dawge_high_state',
