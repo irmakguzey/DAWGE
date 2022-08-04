@@ -171,7 +171,7 @@ def dump_pos_corners(root: str, frame_interval: int):
                 action # action
             ))
 
-    with open(os.path.join(root, 'pos_corners.pickle'), 'wb') as f:
+    with open(os.path.join(root, 'pos_corners_fi_{}.pickle'.format(frame_interval)), 'wb') as f:
         pickle.dump(pos_corners, f)
 
 def get_rvec_tvec(smth_corners):
@@ -207,41 +207,45 @@ def dump_rvec_tvec(root: str, frame_interval: int): # Instead of pos_corners we 
                 action
             ))
 
-    with open(os.path.join(root, 'pos_rvec_tvec.pickle'), 'wb') as f:
+    with open(os.path.join(root, 'pos_rvec_tvec_fi_{}.pickle'.format(frame_interval)), 'wb') as f:
         pickle.dump(pos_rvec_tvec, f)
     
 
 if __name__ == "__main__":
     # data_dir = "/home/irmak/Workspace/DAWGE/src/dawge_planner/data/box_marker_10"
-    data_dirs = glob.glob("/home/irmak/Workspace/DAWGE/src/dawge_planner/data/play_demos/box_marker_*")
-    data_dirs = sorted(data_dirs)
-    print('data_dirs: {}'.format(data_dirs))
+    data_dirs = glob.glob("/home/irmak/Workspace/DAWGE/src/dawge_planner/data/box_orientation_1_demos/train_demos/*")
+    roots = []
+    for root in data_dirs:
+        if os.path.isdir(root):
+            roots.append(root)
+    roots = sorted(roots)
+    print('roots: {}'.format(roots))
     # video_type = 'color'
 
-    for data_dir in data_dirs:
-        # if os.path.exists(os.path.join(data_dir, 'rvec_tvec_animation.mp4')):
+    for data_dir in roots:
+        # if os.path.exists(os.path.join(data_dir, 'corners_animation.mp4')):
         #     continue
         print('data_dir: {}'.format(data_dir))
-        smoothen_corners(data_dir)
-        dump_pos_corners(data_dir, frame_interval=1)
-        dump_rvec_tvec(data_dir, frame_interval=1)
+        # smoothen_corners(data_dir)
+        dump_pos_corners(data_dir, frame_interval=4)
+        dump_rvec_tvec(data_dir, frame_interval=4)
 
         # Test the data with animations
-        AnimateMarkers(
-            data_dir = data_dir, 
-            dump_dir = data_dir, 
-            dump_file = 'corners_animation.mp4',
-            fps = 15,
-            show_predicted_action=False
-        )
+        # AnimateMarkers(
+        #     data_dir = data_dir, 
+        #     dump_dir = data_dir, 
+        #     dump_file = 'corners_animation.mp4',
+        #     fps = 15,
+        #     show_predicted_action=False
+        # )
 
-        AnimateRvecTvec(
-            data_dir = data_dir, 
-            dump_dir = data_dir, 
-            dump_file = 'rvec_tvec_animation.mp4',
-            fps = 15,
-            show_predicted_action=False
-        )
+        # AnimateRvecTvec(
+        #     data_dir = data_dir, 
+        #     dump_dir = data_dir, 
+        #     dump_file = 'rvec_tvec_animation.mp4',
+        #     fps = 15,
+        #     show_predicted_action=False
+        # )
 
 
     # for data_dir in data_dirs:

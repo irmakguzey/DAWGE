@@ -16,8 +16,12 @@ class StateDataset:
 
         # Get the roots
         self.cfg = cfg
+        roots = []
         if not single_dir:
-            roots = glob.glob(f'{cfg.data_dir}/box_marker_*') # TODO: change this in the future
+            all_files = glob.glob(f'{cfg.data_dir}/*') # TODO: change this in the future
+            for root in all_files:
+                if os.path.isdir(root):
+                    roots.append(root)
             roots = sorted(roots)
         else:
             roots = [single_dir_root]
@@ -38,10 +42,10 @@ class StateDataset:
         self.pos_corners = []
         self.pos_rvec_tvec = []
         for root in roots:
-            with open(os.path.join(root, 'pos_corners.pickle'), 'rb') as f:
+            with open(os.path.join(root, 'pos_corners_fi_{}.pickle'.format(self.cfg.frame_interval)), 'rb') as f:
                 self.pos_corners += pickle.load(f) # We need all pos_pairs in the same order when we retrieve the data
 
-            with open(os.path.join(root, 'pos_rvec_tvec.pickle'), 'rb') as f:
+            with open(os.path.join(root, 'pos_rvec_tvec_fi_{}.pickle'.format(self.cfg.frame_interval)), 'rb') as f:
                 self.pos_rvec_tvec += pickle.load(f)
 
         print('len(dataset): {}'.format(len(self.pos_corners)))
