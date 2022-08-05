@@ -98,6 +98,7 @@ class RunInverseModel(HighLevelTask):
         self.cfg.batch_size = 1
         dataset_cfg = deepcopy(self.cfg)
         dataset_cfg.pos_ref = 'global' # Dataset will always give global positions, this will help when finding the knn matches
+        dataset_cfg.frame_interval = 1
         self.dataset = StateDataset(dataset_cfg)
         
         # print('self.cfg.pos_ref: {}'.format(self.cfg.pos_ref))
@@ -127,8 +128,25 @@ class RunInverseModel(HighLevelTask):
         with open(os.path.join(self.cfg.data_dir, 'all_curr_pos.npy'), 'rb') as f:
             all_curr_pos = np.load(f)
 
-        dist = np.linalg.norm(all_curr_pos - curr_pos, axis=1)
-        closest_idx = np.argsort(dist)[:k]
+        # dist = np.linalg.norm(all_curr_pos - curr_pos, axis=1, ord=np.inf) # ord: np.inf it looks at the max of the difference
+        box_dist = np.linalg.norm(all_curr_pos[:,:8] - curr_pos[:8], axis=1)
+        # print('box_dist.shape: {}'.format(box_dist.shape))
+        dog_dist = np.linalg.norm(all_curr_pos[:,8:] - curr_pos[8:], axis=1)
+        # dist = box_dist + dog_dist*2
+        # print('dist.shape: {}'.format(dist.shape))
+
+        box_dist_sorted = np.argsort(box_dist)
+        dog_dist_sorted = np.argsort(dog_dist)
+
+        index_order_sum = np.zeros((box_dist.shape))
+        # Find the first k indices that are common in both of them
+        for i in range(len(index_order_sum)):
+            # Add the indices 
+            index_order_sum[box_dist_sorted[i]] += i 
+            index_order_sum[dog_dist_sorted[i]] += i 
+
+        # closest_idx = np.argsort(dist)[:k]
+        closest_idx = np.argsort(index_order_sum)[:k]
 
         return closest_idx
 
@@ -136,6 +154,9 @@ class RunInverseModel(HighLevelTask):
         with open(os.path.join(self.cfg.data_dir, 'all_curr_pos.npy'), 'rb') as f:
             all_curr_pos = np.load(f)
 
+        # print('all_curr_pos.shape: {}, curr_pos.shape: {}'.format(
+        #     all_curr_pos.shape, curr_pos.shape
+        # ))
         dist = np.linalg.norm(all_curr_pos - curr_pos, axis=1)
         dist.sort()
 
@@ -192,17 +213,17 @@ class RunInverseModel(HighLevelTask):
                 pred_action[1] = -0.3
             else:
                 pred_action[1] = 0.3
-        # if abs(pred_action[0]) > 0.15:
-        #     if pred_action[0] < 0:
-        #         pred_action[0] = -0.15
-        #     else:
-        #         pred_action[0] = 0.15
+        if abs(pred_action[0]) > 0.15:
+            if pred_action[0] < 0:
+                pred_action[0] = -0.15
+            else:
+                pred_action[0] = 0.15
 
         print('pred_action: {}, action: {}'.format(pred_action, action))
 
         # Update the high level command
         self.high_cmd_msg.mode = 2
-        self.high_cmd_msg.forwardSpeed = pred_action[0] # To make sure the action is applied slowly
+        self.high_cmd_msg.forwardSpeed = pred_action[0] / 2 # To make sure the action is applied slowly
         self.high_cmd_msg.rotateSpeed = pred_action[1] / 2
 
         # Plot and publish the positions
@@ -294,7 +315,7 @@ if __name__ == "__main__":
     rospy.init_node('dawge_pli', disable_signals=True) # To convert images to video in the end
     
     task = RunInverseModel(
-        out_dir='/home/irmak/Workspace/DAWGE/contrastive_learning/out/2022.08.03/19-59_pli_ref_dog_lf_mse_fi_1_pt_corners_bs_64_hd_64_lr_0.001_zd_8',
+        out_dir='/home/irmak/Workspace/DAWGE/contrastive_learning/out/2022.08.04/15-36_pli_ref_dog_lf_mse_fi_3_pt_corners_bs_64_hd_64_lr_0.001_zd_8',
         video_dump_dir='/home/irmak/Workspace/DAWGE/src/dawge_planner/data/deployments',
         high_cmd_topic='dawge_high_cmd',
         high_state_topic='dawge_high_state',
