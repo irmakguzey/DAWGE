@@ -213,7 +213,7 @@ def dump_rvec_tvec(root: str, frame_interval: int): # Instead of pos_corners we 
 
 if __name__ == "__main__":
     # data_dir = "/home/irmak/Workspace/DAWGE/src/dawge_planner/data/box_marker_10"
-    data_dirs = glob.glob("/home/irmak/Workspace/DAWGE/src/dawge_planner/data/box_orientation_1_demos/train_demos/*")
+    data_dirs = glob.glob("/home/irmak/Workspace/DAWGE/src/dawge_planner/data/box_orientation_2_demos/train_demos/*")
     roots = []
     for root in data_dirs:
         if os.path.isdir(root):
@@ -227,8 +227,8 @@ if __name__ == "__main__":
         #     continue
         print('data_dir: {}'.format(data_dir))
         # smoothen_corners(data_dir)
-        dump_pos_corners(data_dir, frame_interval=4)
-        dump_rvec_tvec(data_dir, frame_interval=4)
+        dump_pos_corners(data_dir, frame_interval=1)
+        dump_rvec_tvec(data_dir, frame_interval=1)
 
         # Test the data with animations
         # AnimateMarkers(

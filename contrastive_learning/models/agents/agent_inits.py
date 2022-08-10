@@ -8,13 +8,15 @@ def init_agent(cfg, device, rank):
         agent = init_sbfd(cfg, device, rank) # For SBFD the encoder is different
     elif cfg.agent_type == 'pli':
         agent = init_pli(cfg, device, rank)
+    elif cfg.agent_type == 'bc':
+        agent = init_bc(cfg, device, rank)
 
     return agent
 
 # Scripts to initialize different agents - used in training scripts
 def init_pli(cfg, device, rank):
     # Initialize the model
-    model = hydra.utils.instantiate(cfg.model,
+    model = hydra.utils.instantiate(cfg.pli_model,
                                     input_dim=cfg.pos_dim*2, # For dog and box
                                     action_dim=cfg.action_dim,
                                     hidden_dim=cfg.hidden_dim).to(device)
@@ -34,6 +36,34 @@ def init_pli(cfg, device, rank):
                                     optimizer=optimizer)
 
     agent.to(device)
+
+    return agent
+
+def init_bc(cfg, device, rank):
+    # Initialize the model
+    if cfg.agent.predict_dist:
+        model = hydra.utils.instantiate(cfg.bc_dist_model,
+                                        state_dim=cfg.pos_dim*2,
+                                        hidden_dim=cfg.hidden_dim).to(device)
+    else:
+        model = hydra.utils.instantiate(cfg.bc_reg_model,
+                                        state_dim=cfg.pos_dim*2,
+                                        action_dim=cfg.action_dim,
+                                        hidden_dim=cfg.hidden_dim).to(device)
+    
+    model = DDP(model, device_ids=[rank], output_device=rank, broadcast_buffers=False)
+
+    # Initialize the optimizer 
+    optimizer = hydra.utils.instantiate(cfg.optimizer,
+                                        params=model.parameters(),
+                                        lr=cfg.lr,
+                                        weight_decay=cfg.weight_decay)
+
+    # Initialize the total agent 
+    agent = hydra.utils.instantiate(cfg.agent,
+                                    model=model,
+                                    optimizer=optimizer)
+    agent.to(device) # Agent has its own to method
 
     return agent
 
@@ -91,4 +121,4 @@ def init_sbfd(cfg, device, rank): # This can be used for sbfd agents as well
                                     optimizer=optimizer)
     agent.to(device)
 
-    return agent 
+    return agent     

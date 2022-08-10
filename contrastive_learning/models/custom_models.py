@@ -80,3 +80,48 @@ class LinearInverse(nn.Module):
         x = torch.cat((curr_pos, next_pos), dim=-1)
         x = self.model(x)
         return x
+
+# Linear model to be used in behavior cloning method
+# It will input the position and get the actual action (not a mean and variance)
+class BCRegular(nn.Module):
+    def __init__(self, state_dim, action_dim, hidden_dim):
+        super().__init__()
+        self.model = nn.Sequential(
+            nn.Linear(state_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, int(hidden_dim/2)),
+            nn.ReLU(),
+            nn.Linear(int(hidden_dim/2), action_dim)
+        )
+
+    def forward(self, curr_state):
+        return self.model(curr_state)
+
+class BCDist(nn.Module):
+    def __init__(self, state_dim, hidden_dim):
+        super().__init__()
+        self.mean_model = nn.Sequential(
+            nn.Linear(state_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, int(hidden_dim/2)),
+            nn.ReLU(),
+            nn.Linear(int(hidden_dim/2),1) # It will always be 2 (mean and std)
+        )
+
+        self.std_model = nn.Sequential(
+            nn.Linear(state_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, int(hidden_dim/2)),
+            nn.ReLU(),
+            nn.Linear(int(hidden_dim/2),1),
+            nn.Softmax() # Std cannot be negative
+        )
+
+    def forward(self, curr_state):
+        mean = self.mean_model(curr_state)
+        std = self.std_model(curr_state)
+
+        return mean, std # Sample the action in this way
+
+
+

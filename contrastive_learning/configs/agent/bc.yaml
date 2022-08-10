@@ -1,0 +1,5 @@
+_target_: contrastive_learning.models.agents.bc.BC
+loss_fn: mse
+predict_dist: True # When true this bc will predict the distribution rather than the action
+model: ???
+optimizer: ???

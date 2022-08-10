@@ -4,13 +4,26 @@ defaults:
     # - encoder: resnet18
     # - trans: mlp
     # - optimizer: adam
-    - agent: pli
-    - optimizer: adam
+    # - agent: pli
+    # - optimizer: adam
     # - agent: sbfd
     # - optimizer: adam
     # - trans: mlp
+    - agent: bc
+    - optimizer: adam
 
-model:
+bc_reg_model:
+  _target_: contrastive_learning.models.custom_models.BCRegular
+  state_dim: ???
+  action_dim: ???
+  hidden_dim: ???
+
+bc_dist_model:
+  _target_: contrastive_learning.models.custom_models.BCDist
+  state_dim: ???
+  hidden_dim: ???
+
+pli_model:
   _target_: contrastive_learning.models.custom_models.LinearInverse
   input_dim: ??? # They will be set according to the rest of the config
   action_dim: ???
@@ -26,7 +39,7 @@ pos_encoder:
 seed: 42
 device: cuda
 
-agent_type: pli # cpn / pli / sbfd
+agent_type: bc # cpn / pli / sbfd / bc
 dataset_type: state # State or visual for now
 pos_type: corners # rvec_tvec / corners
 pos_ref: dog # global / dog / box - which ever it is that will be removed from the other one - sbfd is always global!
@@ -36,7 +49,7 @@ train_dset_split: 0.8
 
 # Hyperparameters to be used everywhere
 batch_size: 64
-lr: 1e-3
+lr: 1e-4
 weight_decay: 1e-5
 # z_dim: 1000 # resnet18 gives out 1000 dimensions (needed for cpn)
 z_dim: 8 # Positions will be mapped to embeddings
