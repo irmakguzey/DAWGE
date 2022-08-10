@@ -154,3 +154,9 @@ src/dawge_planner/scripts/aruco_markers/data
 # Test videos 
 contrastive_learning/tests/animations/*
 contrastive_learning/tests/plots/*
+
+# Diffusion test ignores
+contrastive_learning/notebooks/diffusion_mock_dset
+contrastive_learning/notebooks/diffusion_dset
+contrastive_learning/notebooks/logs
+contrastive_learning/notebooks/data
