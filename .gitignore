@@ -158,5 +158,7 @@ contrastive_learning/tests/plots/*
 # Diffusion test ignores
 contrastive_learning/notebooks/diffusion_mock_dset
 contrastive_learning/notebooks/diffusion_dset
+contrastive_learning/notebooks/diff_outputs
+contrastive_learning/notebooks/diff_samples
 contrastive_learning/notebooks/logs
 contrastive_learning/notebooks/data

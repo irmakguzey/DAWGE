@@ -9,11 +9,9 @@
 # One demo will be enough for now - then we should do knn matching for the kth state
 # and choose the t+1th state in that demo
 
-from re import L
 import cv2
-from soupsieve import closest
-from tqdm import tqdm
 import cv_bridge
+import glob
 import rospy
 import signal
 import os
@@ -29,6 +27,9 @@ from copy import deepcopy
 from cv2 import aruco
 from datetime import datetime
 from omegaconf import DictConfig, OmegaConf
+from soupsieve import closest
+from tqdm import tqdm
+from re import L
 
 # ROS Image message
 from sensor_msgs.msg import Image
@@ -92,18 +93,23 @@ class RunInverseModel(HighLevelTask):
         
         print('self.lin_model: {}'.format(self.lin_model))
 
+        
+
         # Initialize the dataset
         # Get the dataset
         self.cfg.data_dir = '/home/irmak/Workspace/DAWGE/src/dawge_planner/data/box_orientation_1_demos/test_demos' # We will use all the demos
         self.cfg.batch_size = 1
-        dataset_cfg = deepcopy(self.cfg)
-        dataset_cfg.pos_ref = 'global' # Dataset will always give global positions, this will help when finding the knn matches
-        dataset_cfg.frame_interval = 1
-        self.dataset = StateDataset(dataset_cfg)
+        self.dataset_cfg = deepcopy(self.cfg)
+        self.dataset_cfg.pos_ref = 'global' # Dataset will always give global positions, this will help when finding the knn matches
+        self.dataset_cfg.frame_interval = 1
+        self.dataset = StateDataset(self.dataset_cfg)
         
         # print('self.cfg.pos_ref: {}'.format(self.cfg.pos_ref))
 
+        
+
         self.waiting_counter = 0
+        self.desired_next_pos = np.zeros(self.cfg.pos_dim*2,)
         self.is_init_var = False
 
         print('len(dataset): {}'.format(len(self.dataset)))
@@ -121,34 +127,103 @@ class RunInverseModel(HighLevelTask):
 
         with open(os.path.join(self.cfg.data_dir, 'all_curr_pos.npy'), 'wb') as f:
             np.save(f, all_curr_pos)
+    
+    def dump_all_pos_per_traj(self):
+        # Create separate datasets for all trajectories
+        dataloaders = []
+        datasets = []
+        max_traj_len = 0
+        all_files = glob.glob(f'{self.dataset_cfg.data_dir}/*') # TODO: change this in the future
+        for root in all_files:
+            if os.path.isdir(root):
+                # roots.append(root)
+                dataset = StateDataset(self.dataset_cfg, single_dir=True, single_dir_root=root)
+                datasets.append(dataset)
+                # Get dataloader for each of the datasets
+                dataloader = data.DataLoader(dataset, batch_size=1, shuffle=False, num_workers=8)
+                dataloaders.append(dataloader)
+                if len(dataloader) > max_traj_len:
+                    max_traj_len = len(dataloader)
 
-    def get_best_next_pos(self, curr_pos, k=10): # curr_pos should be normalized
-        # Find the closest curr_pos from all_curr_pos.npy
-        # Return the corresponding next_pos from the same array
-        with open(os.path.join(self.cfg.data_dir, 'all_curr_pos.npy'), 'rb') as f:
-            all_curr_pos = np.load(f)
+        # Create a numpy array with frames for all trajectories separately
+        self.all_pos_per_traj = np.zeros((len(dataloaders), max_traj_len, self.cfg.pos_dim*2)) # Shape: [num_of_trajs, len_traj, state_dim]
+        print('all_pos_per_traj.shape: {}'.format(self.all_pos_per_traj.shape))
+        pbar = tqdm(total=len(dataloaders))
+        for traj_id,curr_dataloader in enumerate(dataloaders):
+            for i,batch in enumerate(curr_dataloader):
+                curr_pos, _, _ = [b.to(self.device) for b in batch]
+                # Normalization of curr_pos is wrong right now - we need to denormalize it with the current dataset 
+                # and then normalize it again with self.dataset
+                curr_pos = datasets[traj_id].denormalize_corner(curr_pos.cpu().detach().numpy()).reshape(-1,2)
+                curr_pos = self.dataset.normalize_corner(curr_pos).flatten()
+                # Dump the positions for each trajectory there
+                self.all_pos_per_traj[traj_id,i:i+1,:] = curr_pos
+                
+            pbar.update(1)
 
-        # dist = np.linalg.norm(all_curr_pos - curr_pos, axis=1, ord=np.inf) # ord: np.inf it looks at the max of the difference
-        box_dist = np.linalg.norm(all_curr_pos[:,:8] - curr_pos[:8], axis=1)
-        # print('box_dist.shape: {}'.format(box_dist.shape))
-        dog_dist = np.linalg.norm(all_curr_pos[:,8:] - curr_pos[8:], axis=1)
-        # dist = box_dist + dog_dist*2
-        # print('dist.shape: {}'.format(dist.shape))
+        # Dump the array
+        with open(os.path.join(self.cfg.data_dir, 'all_pos_per_traj.npy'), 'wb') as f:
+            np.save(f, self.all_pos_per_traj)
 
-        box_dist_sorted = np.argsort(box_dist)
-        dog_dist_sorted = np.argsort(dog_dist)
+    # TODO: Find the states where it's closer to the state in the trajectories separately
+    # def get_best_next_pos(self, curr_pos, k=10): # curr_pos should be normalized
+    #     # Find the closest curr_pos from all_curr_pos.npy
+    #     # Return the corresponding next_pos from the same array
+    #     with open(os.path.join(self.cfg.data_dir, 'all_curr_pos.npy'), 'rb') as f:
+    #         all_curr_pos = np.load(f)
 
-        index_order_sum = np.zeros((box_dist.shape))
-        # Find the first k indices that are common in both of them
-        for i in range(len(index_order_sum)):
-            # Add the indices 
-            index_order_sum[box_dist_sorted[i]] += i 
-            index_order_sum[dog_dist_sorted[i]] += i 
+    #     dist = np.linalg.norm(all_curr_pos - curr_pos, axis=1) # ord: np.inf it looks at the max of the difference
+    #     # box_dist = np.linalg.norm(all_curr_pos[:,:8] - curr_pos[:8], axis=1)
+    #     # # print('box_dist.shape: {}'.format(box_dist.shape))
+    #     # dog_dist = np.linalg.norm(all_curr_pos[:,8:] - curr_pos[8:], axis=1)
+    #     # # dist = box_dist + dog_dist*2
+    #     # # print('dist.shape: {}'.format(dist.shape))
 
-        # closest_idx = np.argsort(dist)[:k]
-        closest_idx = np.argsort(index_order_sum)[:k]
+    #     # box_dist_sorted = np.argsort(box_dist)
+    #     # dog_dist_sorted = np.argsort(dog_dist)
 
-        return closest_idx
+    #     # index_order_sum = np.zeros((box_dist.shape))
+    #     # # Find the first k indices that are common in both of them
+    #     # for i in range(len(index_order_sum)):
+    #     #     # Add the indices 
+    #     #     index_order_sum[box_dist_sorted[i]] += i 
+    #     #     index_order_sum[dog_dist_sorted[i]] += i 
+
+    #     closest_idx = np.argsort(dist)[:k]
+    #     # closest_idx = np.argsort(index_order_sum)[:k]
+
+    #     return closest_idx
+
+    def get_best_next_pos(self, curr_pos, percentage=25.): # next element of the chosen state will be the next state anyways - we can directly return the next pos
+        # Load the positions for all trajectories
+        # with open(os.path.join(self.cfg.data_dir, 'all_pos_per_traj.npy'), 'rb') as f:
+        #     self.all_pos_per_traj = np.load(f, allow_pickle=True)
+
+        dist = np.linalg.norm(self.all_pos_per_traj - curr_pos, axis=2) # Shape: (num_trajs, len_traj)
+        sorted_state_ids = np.argsort(dist, axis=1) # Shape: (num_trajs, len_traj) - sorted_dist_ids[i,0] will give the closest state to the curr_pos in ith trajectory
+        best_state_ids = sorted_state_ids[:,0] # Shape: (num_trajs,) - best_state_ids[i] will give the closest state in ith trajectory
+
+        traj_dists = np.zeros(best_state_ids.shape[0])
+        for i in range(best_state_ids.shape[0]):
+            # Get the closest state in ith trajectory
+            closest_state = self.all_pos_per_traj[i,best_state_ids[i],:]
+            # Find the dist between closest_state and curr_pos
+            traj_dists[i] = np.linalg.norm(closest_state - curr_pos)
+        
+        # Get the sorted traj_ids
+        best_traj_ids = np.argsort(traj_dists) # Shape: (num_trajs,) - best_traj_ids[0] will give the id of the trajectory with the closest state to the curr_pos
+
+        # Get the percentage'th best trajectory 
+        perc_id = int(best_traj_ids.shape[0] * (percentage / 100.))
+        best_traj_id = best_traj_ids[perc_id]
+        next_pos = self.all_pos_per_traj[best_traj_id, best_state_ids[best_traj_id]+2, :] # TODO: Do this +1 - for now it will only try to go to that position
+
+        # Get the mean of the kth first trajectories's closest states
+        # self.
+
+        # print('best_traj_id: {}, best_state_id: {}'.format(best_traj_id, best_state_ids[best_traj_id]))
+
+        return next_pos
 
     def is_out_of_distribution(self, curr_pos):
         with open(os.path.join(self.cfg.data_dir, 'all_curr_pos.npy'), 'rb') as f:
@@ -173,23 +248,38 @@ class RunInverseModel(HighLevelTask):
         
 
     def update_high_cmd(self):
+        # TODO: Add a command interface to try different things
+    
         # Normalize the curr_pos
         self.get_corners()
         curr_pos = self.dataset.normalize_corner(self.curr_pos).flatten() # This pos is global
 
         # Check if the current position is out of distribution
-        if self.is_out_of_distribution(curr_pos):
-            print('STATE OUT OF DISTRIBUTION!!!')
+        # if self.is_out_of_distribution(curr_pos):
+        #     print('STATE OUT OF DISTRIBUTION!!!')
             # return # Don't change anything if we have gone out of distribution
 
-        closest_idx = self.get_best_next_pos(curr_pos, k=50)
-        for i,closest_id in enumerate(closest_idx):
-            _, next_pos, action = self.dataset.getitem(closest_id) # next_pos is also global
-            if self.action_above_thresh(action):
-                break
+        # closest_idx = self.get_best_next_pos(curr_pos, k=50)
+        # for i,closest_id in enumerate(closest_idx):
+        #     _, next_pos, action = self.dataset.getitem(closest_id) # next_pos is also global
+            # if self.action_above_thresh(action):
+            #     break
 
+        half_idx = self.cfg.pos_dim
+        curr_dog_dist = np.linalg.norm(curr_pos[half_idx:] - self.desired_next_pos[half_idx:])
+        print('curr_dog_dist: {}'.format(curr_dog_dist))
+        if (self.desired_next_pos == 0).all() or curr_dog_dist < 0.05 or curr_dog_dist > 0.08: # Don't change the next_pos that frequently
+            self.desired_next_pos = self.get_best_next_pos(curr_pos, percentage=50.)
+            print('NEXT POS CHANGED')
+        # print('next_pos.shape: {}'.format(next_pos.shape))
+        # curr_dist = np.linalg.norm(next_pos - curr_pos)
+        # print('curr_dist: {}'.format(curr_dist))
+        
+        # print('curr_dog_dist: {}'.format(curr_dog_dist))
+
+        # print('self.desired_next_pos: {}'.format(self.desired_next_pos))
         curr_pos = torch.unsqueeze(torch.FloatTensor(curr_pos), 0).to(self.device)
-        next_pos = torch.unsqueeze(torch.FloatTensor(next_pos), 0).to(self.device)
+        next_pos = torch.unsqueeze(torch.FloatTensor(self.desired_next_pos), 0).to(self.device)
 
         # Take the reference here
         ref_tensor = torch.zeros((curr_pos.shape))
@@ -205,7 +295,9 @@ class RunInverseModel(HighLevelTask):
 
         # Denormalize the action``
         pred_action = self.dataset.denormalize_action(pred_action[0].cpu().detach().numpy()) # NOTE: what is the 0 for?
-        action = self.dataset.denormalize_action(action.cpu().detach().numpy())
+        # action = self.dataset.denormalize_action(action.cpu().detach().numpy())
+        action = np.zeros((pred_action.shape)) # TODO: Change this - this is only for meaned best next state prediction
+        # action = self.dataset.denormalize_action(action) # It is already cpu'ed abd everything when it was dumped
         # Make both of the actions be a bit slower - predicted action turns out to be way faster
         # pred_action /= 5 # Rotation can be very slow
         if abs(pred_action[1]) > 0.3:
@@ -314,16 +406,18 @@ class RunInverseModel(HighLevelTask):
 if __name__ == "__main__":
     rospy.init_node('dawge_pli', disable_signals=True) # To convert images to video in the end
     
+    # 2022.08.03-19-59_pli_ref_dog_lf_mse_fi_1_pt_corners_bs_64_hd_64_lr_0.001_zd_8
+
     task = RunInverseModel(
-        out_dir='/home/irmak/Workspace/DAWGE/contrastive_learning/out/2022.08.04/15-36_pli_ref_dog_lf_mse_fi_3_pt_corners_bs_64_hd_64_lr_0.001_zd_8',
+        out_dir='/home/irmak/Workspace/DAWGE/contrastive_learning/out/2022.08.03/19-59_pli_ref_dog_lf_mse_fi_1_pt_corners_bs_64_hd_64_lr_0.001_zd_8',
         video_dump_dir='/home/irmak/Workspace/DAWGE/src/dawge_planner/data/deployments',
         high_cmd_topic='dawge_high_cmd',
         high_state_topic='dawge_high_state',
-        rate=100, # TODO: Maybe take a look at this?
+        rate=50, # TODO: Maybe take a look at this?
         color_img_topic='/dawge_camera/color/image_raw',
         fps=15
     )
 
-    task.dump_all_pos() # NOTE: delete this afterwards
+    task.dump_all_pos_per_traj() # NOTE: delete this afterwards
 
     task.run()

@@ -1,7 +1,7 @@
 import hydra
 from torch.nn.parallel import DistributedDataParallel as DDP
 
-def init_agent(cfg, device, rank):
+def init_agent(cfg, device, rank, dataset=None):
     if cfg.agent_type == 'cpn': # Contrastive Predictive Network 
         agent = init_cpn(cfg, device, rank)
     elif cfg.agent_type == 'sbfd': # State Based Forward Dynamics
@@ -10,6 +10,33 @@ def init_agent(cfg, device, rank):
         agent = init_pli(cfg, device, rank)
     elif cfg.agent_type == 'bc':
         agent = init_bc(cfg, device, rank)
+    elif cfg.agent_type == 'diffusion':
+        agent = init_diffusion(cfg, device, rank, dataset)
+
+    return agent
+
+# Initialize the diffusion agent - TODO
+def init_diffusion(cfg, device, rank, dataset):
+    # Initialize the model
+    eps_model = hydra.utils.instantiate(cfg.eps_model,
+                                        input_dim=(cfg.pos_dim*2)*2+cfg.action_dim+1, # Two positions, 1 action and diffusion time
+                                        hidden_dim=cfg.hidden_dim,
+                                        output_dim=cfg.pos_dim*2) .to(device) # This will give an error - it should
+    eps_model = DDP(eps_model, device_ids=[rank], output_device=rank, broadcast_buffers=False)
+
+    # Initialize the optimizer
+    optimizer = hydra.utils.instantiate(cfg.optimizer,
+                                        params = eps_model.parameters(),
+                                        lr = cfg.lr,
+                                        weight_decay = cfg.weight_decay)
+
+    # Initialize the total agent
+    agent = hydra.utils.instantiate(cfg.agent,
+                                    eps_model=eps_model,
+                                    optimizer=optimizer,
+                                    dataset=dataset,
+                                    checkpoint_dir=cfg.checkpoint_dir)
+    agent.to(device)
 
     return agent
 
@@ -24,7 +51,6 @@ def init_pli(cfg, device, rank):
 
 
     # Initialize the optimizer
-    # parameters = list(encoder.parameters()) + list(trans.parameters())
     optimizer = hydra.utils.instantiate(cfg.optimizer,
                                         params = model.parameters(),
                                         lr = cfg.lr,

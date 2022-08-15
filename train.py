@@ -58,7 +58,7 @@ class Workspace:
         train_loader, test_loader, dataset = get_dataloaders(self.cfg)
 
         # Initialize the agent - looks at the type of the agent to be initialized first
-        agent = init_agent(self.cfg, device, rank)
+        agent = init_agent(self.cfg, device, rank, dataset)
 
         best_loss = torch.inf 
 

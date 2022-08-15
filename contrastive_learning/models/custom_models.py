@@ -103,18 +103,22 @@ class BCDist(nn.Module):
         self.mean_model = nn.Sequential(
             nn.Linear(state_dim, hidden_dim),
             nn.ReLU(),
-            nn.Linear(hidden_dim, int(hidden_dim/2)),
+            nn.Linear(hidden_dim, hidden_dim),
             nn.ReLU(),
-            nn.Linear(int(hidden_dim/2),1) # It will always be 2 (mean and std)
+            nn.Linear(hidden_dim, int(hidden_dim/4)),
+            nn.ReLU(),
+            nn.Linear(int(hidden_dim/4),1) # It will always be 2 (mean and std)
         )
 
         self.std_model = nn.Sequential(
             nn.Linear(state_dim, hidden_dim),
             nn.ReLU(),
-            nn.Linear(hidden_dim, int(hidden_dim/2)),
+            nn.Linear(hidden_dim, hidden_dim),
             nn.ReLU(),
-            nn.Linear(int(hidden_dim/2),1),
-            nn.Softmax() # Std cannot be negative
+            nn.Linear(hidden_dim, int(hidden_dim/4)),
+            nn.ReLU(),
+            nn.Linear(int(hidden_dim/4),1),
+            nn.ReLU() # Std cannot be negative
         )
 
     def forward(self, curr_state):
@@ -122,6 +126,29 @@ class BCDist(nn.Module):
         std = self.std_model(curr_state)
 
         return mean, std # Sample the action in this way
+
+# EpsModel of diffusion
+class EpsModel(nn.Module): # It will get 2 values for position and 1 binary flag to indicate if the input is a dog or a box
+    def __init__(self, input_dim, hidden_dim, output_dim):
+        super().__init__()
+        self.model = nn.Sequential(
+            nn.Linear(input_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, output_dim) # Output shape will be two values (x and y)
+        )
+
+    def forward(self, xt, t, x0, a): # x: data, t: timestep of diffusion, a: action
+        # Add another dimension to t
+        t = t.reshape(-1,1) # They technically should have the same shape - noise timestepi
+        # a = a.reshape(xt.shape) # For some reason the inputs have 1 dimension without reshape
+        out = torch.cat((xt,t,x0,a), dim=-1)
+        # print('out.shape: {}'.format(out.shape))
+        return self.model(out)
+    
 
 
 

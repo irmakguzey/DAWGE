@@ -11,6 +11,7 @@ import matplotlib.patches as patches
 import numpy as np
 import os
 import pickle
+import scipy.stats as stats
 
 from cv2 import aruco
 
@@ -25,7 +26,7 @@ CAMERA_INTRINSICS = np.array([[612.82019043,   0.        , 322.14050293],
 
 def plot_corners(ax, curr_pos, use_img=False, img=None, use_frame_axis=False, frame_axis=None, plot_action=False, actions=None, color_scheme=1):
     # actions: [action, pred_action]
-    # curr_pos.shapeL: (8,2)
+    # curr_pos.shape: (8,2)
     
     img_shape = (720, 1280, 3)
     blank_image = np.ones(img_shape, np.uint8) * 255
@@ -62,6 +63,7 @@ def plot_corners(ax, curr_pos, use_img=False, img=None, use_frame_axis=False, fr
 
     return img, frame_axis
 
+# TODO: Make these two functions the same way
 # Function to draw box and dog position and applied action
 def plot_rvec_tvec(ax, curr_pos, use_img=False, img=None, plot_action=False, actions=None): # Color scheme is to have an alternative color for polygon colors
     # actions: [action, pred_action]
@@ -136,3 +138,20 @@ def plot_actions(actions, frame_axis):
                 angle, startAngle, endAngle, color=(104,43,159), thickness=3)
 
     return frame_axis
+
+# Diffusion related plots
+def plot_gaus_dist(x, ax, label):
+    traj_len = len(x)
+
+    mean = x.mean()
+    std = x.std()
+
+    lin_range = np.linspace(mean-std*2, mean+std*2, traj_len)
+    ax.plot(lin_range, stats.norm.pdf(lin_range, mean, std), label=label)
+    ax.legend()
+
+
+def plot_data(x, ax, label):
+    traj_len = len(x)
+    ax.plot(x, np.random.rand(traj_len), 'o', label=label)
+    ax.legend()

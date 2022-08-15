@@ -1,0 +1,6 @@
+_target_: contrastive_learning.models.agents.diffusion.Diffusion
+n_steps: 1000
+eps_model: ???
+optimizer: ???
+dataset: ???
+checkpoint_dir: ???

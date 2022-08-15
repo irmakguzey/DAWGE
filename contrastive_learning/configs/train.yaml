@@ -9,9 +9,12 @@ defaults:
     # - agent: sbfd
     # - optimizer: adam
     # - trans: mlp
-    - agent: bc
+    # - agent: bc
+    # - optimizer: adam
+    - agent: diffusion
     - optimizer: adam
 
+# TODO: Clean this part I can you can create a custom training config as well
 bc_reg_model:
   _target_: contrastive_learning.models.custom_models.BCRegular
   state_dim: ???
@@ -35,20 +38,27 @@ pos_encoder:
   hidden_dim: ???
   out_dim: ??? # set it to z_dim
 
+eps_model:
+  _target_: contrastive_learning.models.custom_models.EpsModel
+  input_dim: ???
+  hidden_dim: ???
+  output_dim: ???
+
 
 seed: 42
 device: cuda
 
-agent_type: bc # cpn / pli / sbfd / bc
+agent_type: diffusion # cpn / pli / sbfd / bc / diffusion
 dataset_type: state # State or visual for now
 pos_type: corners # rvec_tvec / corners
-pos_ref: dog # global / dog / box - which ever it is that will be removed from the other one - sbfd is always global!
+pos_ref: global # global / dog / box - which ever it is that will be removed from the other one - sbfd is always global!
 train_epochs: 1000
 save_frequency: 10 # Frequency to save the model - there will be a test in each step
 train_dset_split: 0.8
+diff_n_steps: 1000
 
 # Hyperparameters to be used everywhere
-batch_size: 64
+batch_size: 32
 lr: 1e-4
 weight_decay: 1e-5
 # z_dim: 1000 # resnet18 gives out 1000 dimensions (needed for cpn)
@@ -65,11 +75,12 @@ num_gpus: 4
 fps: 15 # This should be the same as the all the fps in saving - little differences are not going to be taken
 # sec_interval: 0.33 # seconds to separate two timesteps
 # frame_interval: 8 # Will be equal to fps * sec_interval - frames to separate two timesteps
-frame_interval: 4
+frame_interval: 1
 video_type: color # NOTE: you could remove this if you want to use both
 
 # this needs to be specified manually
-experiment: ${agent_type}_ref_${pos_ref}_lf_${agent.loss_fn}_fi_${frame_interval}_pt_${pos_type}_bs_${batch_size}_hd_${hidden_dim}_lr_${lr}_zd_${z_dim}
+# experiment: ${agent_type}_ref_${pos_ref}_lf_${agent.loss_fn}_fi_${frame_interval}_pt_${pos_type}_bs_${batch_size}_hd_${hidden_dim}_lr_${lr}_zd_${z_dim}
+experiment: ${agent_type}_ref_${pos_ref}_fi_${frame_interval}_pt_${pos_type}_bs_${batch_size}_hd_${hidden_dim}_lr_${lr}_zd_${z_dim}
 
 data_dir: /home/irmak/Workspace/DAWGE/src/dawge_planner/data/box_orientation_1_demos/train_demos
 checkpoint_dir: ??? # Will be set to hydra dir inside the code
