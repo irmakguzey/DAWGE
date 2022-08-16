@@ -10,7 +10,7 @@ from tqdm import tqdm
 from torch.nn.parallel import DistributedDataParallel as DDP
 
 from contrastive_learning.models.pretrained_models import resnet18
-from contrastive_learning.models.custom_models import LinearInverse, PosToEmbedding, Transition
+from contrastive_learning.models.custom_models import LinearInverse, PosToEmbedding, Transition, EpsModel
 from contrastive_learning.datasets.dataloaders import get_dataloaders
 from contrastive_learning.datasets.state_dataset import StateDataset
 
@@ -120,6 +120,28 @@ def load_lin_model(cfg, device, model_path):
     lin_model = DDP(lin_model.to(device), device_ids=[0])
 
     return lin_model
+
+def load_diff_model(cfg, device, model_path):
+    eps_model = EpsModel(
+        input_dim=(cfg.pos_dim*2)*2 + cfg.action_dim + 1,
+        hidden_dim=cfg.hidden_dim,
+        output_dim=cfg.pos_dim*2,
+    )
+    
+    state_dict = torch.load(model_path)
+    new_state_dict = OrderedDict(
+    )
+
+    for k, v in state_dict.items():
+        name = k[7:] # remove `module.`
+        new_state_dict[name] = v
+    # load params
+    eps_model.load_state_dict(new_state_dict)
+
+    # Turn it into DDP - it was saved that way
+    eps_model = DDP(eps_model.to(device), device_ids=[0])
+
+    return eps_model
 
 # Gets all the predicted actions in the test dataset and dumps them in the trained out directory
 def dump_predicted_actions(out_dir, lin_model, device, cfg):

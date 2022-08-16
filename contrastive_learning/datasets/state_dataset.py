@@ -41,82 +41,74 @@ class StateDataset:
         # Traverse through the data and append all pos_corners
         self.pos_corners = []
         self.pos_rvec_tvec = []
+        self.pos_mean_rots = []
         for root in roots:
-            with open(os.path.join(root, 'pos_corners_fi_{}.pickle'.format(self.cfg.frame_interval)), 'rb') as f:
+            with open(os.path.join(root, f'pos_corners_fi_{self.cfg.frame_interval}.pickle'), 'rb') as f:
                 self.pos_corners += pickle.load(f) # We need all pos_pairs in the same order when we retrieve the data
 
-            with open(os.path.join(root, 'pos_rvec_tvec_fi_{}.pickle'.format(self.cfg.frame_interval)), 'rb') as f:
+            with open(os.path.join(root, f'pos_rvec_tvec_fi_{self.cfg.frame_interval}.pickle'), 'rb') as f:
                 self.pos_rvec_tvec += pickle.load(f)
 
-        print('len(dataset): {}'.format(len(self.pos_corners)))
+            with open(os.path.join(root, f'pos_mean_rot_fi_{self.cfg.frame_interval}.pickle'), 'rb') as f:
+                self.pos_mean_rots += pickle.load(f)
 
         # Calculate mins and maxs to normalize positions and actions
         if cfg.pos_type == 'corners':
             self.action_min, self.action_max, self.corner_min, self.corner_max = self.calculate_corners_mins_maxs()
+            self.normalization_fn = self.normalize_corner 
+            self.half_idx = 8
+            self.position_arr = self.pos_corners
         elif cfg.pos_type == 'rvec_tvec':
             self.action_min, self.action_max, self.rvecs_min, self.rvecs_max, self.tvecs_min, self.tvecs_max = self.calculate_rvec_mins_maxs()
+            self.normalization_fn = self.normalize_rvec_tvec
+            self.half_idx = 6
+            self.position_arr = self.pos_rvec_tvec
+        elif cfg.pos_type == 'mean_rot': # Mean and rotation
+            self.action_min, self.action_max, self.mean_min, self.mean_max = self.calculate_mean_rot_mins_maxs()
+            self.rot_max, self.rot_min = np.pi, -np.pi # Rotation has always been given between [-pi,pi]
+            self.normalization_fn = self.normalize_mean_rot 
+            self.half_idx = 3 
+            self.position_arr = self.pos_mean_rots
+
 
         print('self.action_min: {}, self.action_max: {}'.format(self.action_min, self.action_max))
 
     def __len__(self):
-        if self.cfg.pos_type == 'corners':
-            return len(self.pos_corners)
-        elif self.cfg.pos_type == 'rvec_tvec':
-            return len(self.pos_rvec_tvec)
+        return len(self.position_arr)
 
     def __getitem__(self, index): 
-        if self.cfg.pos_type == 'corners':
+        curr_pos, next_pos, action = self.position_arr[index]
 
-            curr_pos, next_pos, action = self.pos_corners[index]
+        # Normalize positions
+        curr_pos = torch.FloatTensor(self.normalization_fn(curr_pos))
+        next_pos = torch.FloatTensor(self.normalization_fn(next_pos))
 
-            # Normalize the positions
-            curr_pos = torch.FloatTensor(self.normalize_corner(curr_pos)) # Will reduce curr_pos's dog or box position from everything
-            next_pos = torch.FloatTensor(self.normalize_corner(next_pos))
+        # Add reference
+        ref_tensor = torch.zeros((int(curr_pos.shape[0]/2)))
+        if self.cfg.pos_ref == 'dog':
+            ref_tensor = curr_pos[self.half_idx:]
+        elif self.cfg.pos_ref == 'box':
+            ref_tensor = curr_pos[:self.half_idx]
+        ref_tensor = ref_tensor.repeat(2)
+        curr_pos -= ref_tensor 
+        next_pos -= ref_tensor 
 
-            # Add reference
-            ref_tensor = torch.zeros((curr_pos.shape))
-            if self.cfg.pos_ref == 'dog': # Will remove the second half of the curr_pos from both curr and next_pos
-                ref_tensor = curr_pos[4:,:]
-                ref_tensor = ref_tensor.repeat(2,1)
-            elif self.cfg.pos_ref == 'box':
-                ref_tensor = curr_pos[:4,:]
-                ref_tensor = ref_tensor.repeat(2,1)
-            curr_pos -= ref_tensor
-            next_pos -= ref_tensor
+        # Normalize actions
+        action = torch.FloatTensor(self.normalize_action(action))
 
-            # Normalize the actions
-            action = torch.FloatTensor(self.normalize_action(action))
-
-            # return box_pos, dog_pos, next_box_pos, next_dog_pos, action
-            return torch.flatten(curr_pos), torch.flatten(next_pos), action
-
-        elif self.cfg.pos_type == 'rvec_tvec':
-
-            curr_pos, next_pos, action = self.pos_rvec_tvec[index]
-
-            # Normalize the positions - TODO: If this works nicely then delete mean/std approach
-            curr_pos = torch.FloatTensor(self.normalize_rvec_tvec(curr_pos))
-            next_pos = torch.FloatTensor(self.normalize_rvec_tvec(next_pos))
-
-            # Add reference
-            ref_tensor = torch.zeros((curr_pos.shape))
-            if self.cfg.pos_ref == 'dog': # Will remove the second half of the curr_pos from both curr and next_pos
-                ref_tensor = curr_pos[3:,:]
-                ref_tensor = ref_tensor.repeat(2,1)
-            elif self.cfg.pos_ref == 'box':
-                ref_tensor = curr_pos[:3,:]
-                ref_tensor = ref_tensor.repeat(2,1)
-            curr_pos -= ref_tensor
-            next_pos -= ref_tensor
-
-            # Normalize the actions
-            action = torch.FloatTensor(self.normalize_action(action))
-
-            # return box_pos, dog_pos, next_box_pos, next_dog_pos, action
-            return curr_pos, next_pos, action # TODO: Add index is just so that we could track
+        return curr_pos, next_pos, action
 
     def getitem(self, index): 
         return self.__getitem__(index) # This is to make this method public so that it can be used in 
+
+    def normalize_mean_rot(self, mean_rot): # Pos: [box_mean_x, box_mean_y, box_rot, dog_mean_x, dog_mean_y, dog_rot] (6,)
+        mean_rot[:2] = (mean_rot[:2] - self.mean_min) / (self.mean_max - self.mean_min)
+        mean_rot[2] = (mean_rot[2] - self.rot_min) / (self.rot_max - self.rot_min)
+
+        mean_rot[3:5] = (mean_rot[3:5] - self.mean_min) / (self.mean_max - self.mean_min)
+        mean_rot[5] = (mean_rot[5] - self.rot_min) / (self.rot_max - self.rot_min)
+
+        return mean_rot
 
     def normalize_rvec_tvec(self, pos): # Pos: [box_rvec, box_tvec, dog_rvec, dog_tvec]
         pos[:3] = (pos[:3] - self.rvecs_min) / (self.rvecs_max - self.rvecs_min)
@@ -128,26 +120,11 @@ class StateDataset:
         return pos
 
     def normalize_corner(self, corner): # Corner.shape: 8.2
-        return (corner - self.corner_min) / (self.corner_max - self.corner_min)
+        corner = (corner - self.corner_min) / (self.corner_max - self.corner_min)
+        return corner.flatten() # TODO: Check if this causes any problems - Returns (16)
 
     def normalize_action(self, action):
         return (action - self.action_min) / (self.action_max - self.action_min)
-
-    def calculate_corners_means_stds(self):
-        corners = np.zeros((len(self.pos_corners), 8,2))
-        actions = np.zeros((len(self.pos_corners), 2))
-        for i in range(len(self.pos_corners)):
-            corners[i,:] = self.pos_corners[i][0]
-            actions[i,0] = self.pos_corners[i][2][0]
-            actions[i,1] = self.pos_corners[i][2][1]
-
-        action_mean, action_std = actions.mean(axis=0), actions.std(axis=0)
-        corner_mean, corner_std = corners.mean(axis=(0,1)), corners.std(axis=(0,1))
-        # Expand corner mean and std to be able to make element wise operations with them
-        corner_mean, corner_std = np.expand_dims(corner_mean, axis=0), np.expand_dims(corner_std, axis=0)
-        corner_mean, corner_std = np.repeat(corner_mean, 8, axis=0), np.repeat(corner_std, 8, axis=0) # 8: 4*2 (4 corners and 2 markers)
-
-        return action_mean, action_std, corner_mean, corner_std
 
     def calculate_rvec_mins_maxs(self):
         rvecs = np.zeros((len(self.pos_rvec_tvec), 2, 3)) # Three axises for each corner - mean should be taken through 0th and 1st axes
@@ -167,6 +144,19 @@ class StateDataset:
         action_min, action_max = actions.min(axis=0), actions.max(axis=0)
 
         return action_min, action_max, rvecs_min, rvecs_max, tvecs_min, tvecs_max
+
+    def calculate_mean_rot_mins_maxs(self):
+        means = np.zeros((len(self.pos_mean_rots), 2))
+        actions = np.zeros((len(self.pos_mean_rots), 2))
+        for i in range(len(self.pos_mean_rots)):
+            means[i,:] = self.pos_mean_rots[i][0][:2]
+            actions[i,0] = self.pos_mean_rots[i][2][0]
+            actions[i,1] = self.pos_mean_rots[i][2][1]
+
+        action_min, action_max = actions.min(axis=0), actions.max(axis=0)
+        mean_min, mean_max = means.min(axis=0), means.max(axis=0)
+
+        return action_min, action_max, mean_min, mean_max
 
     def calculate_corners_mins_maxs(self):
         corners = np.zeros((len(self.pos_corners), 8,2))
@@ -189,7 +179,7 @@ class StateDataset:
 
     def denormalize_corner(self, corner): # corner.shape: (16)
         corner = corner.reshape((8,2))
-        return (corner * (self.corner_max - self.corner_min)) + self.corner_min
+        return (corner * (self.corner_max - self.corner_min)) + self.corner_min # Returns (8,2)
 
     def denormalize_pos_rvec_tvec(self, pos): # pos.shape: (12)
         pos[:3] = pos[:3] * (self.rvecs_max - self.rvecs_min) + self.rvecs_min 
@@ -198,25 +188,27 @@ class StateDataset:
         pos[3:6] = pos[3:6] * (self.tvecs_max - self.tvecs_min) + self.tvecs_min
         pos[9:] = pos[9:] * (self.tvecs_max - self.tvecs_min) + self.tvecs_min
 
-        return pos
+        return pos # Returns (12)
 
+    def denormalize_mean_rot(self, mean_rot): # Shape: (6,)
+        mean_rot[:2] = mean_rot[:2] * (self.mean_max - self.mean_min) + self.mean_min
+        mean_rot[2] = mean_rot[2] * (self.rot_max - self.rot_min) + self.rot_min
 
+        mean_rot[3:5] = mean_rot[3:5] * (self.mean_max - self.mean_min) + self.mean_min 
+        mean_rot[5] = mean_rot[5] * (self.rot_max - self.rot_min) + self.rot_min
 
-# if __name__ == '__main__':
-#     cfg = OmegaConf.load('/home/irmak/Workspace/DAWGE/contrastive_learning/configs/train.yaml')
-#     cfg.batch_size = 1
-#     dset = StateDataset(
-#         data_dir = cfg.data_dir
-#     )
+        return mean_rot
 
-#     data_loader = data.DataLoader(dset, batch_size=cfg.batch_size, shuffle=False, num_workers=cfg.num_workers)
-#     batch = next(iter(data_loader))
-#     curr_pos, next_pos, action, _ = [b for b in batch]
-#     print('curr_pos: {}, next_pos: {}, action: {}'.format(
-#         curr_pos, next_pos, action
-#     ))
-    # print(dset.getitem(0))
-    # print(len(dset))
+if __name__ == '__main__':
+    cfg = OmegaConf.load('/home/irmak/Workspace/DAWGE/contrastive_learning/configs/train.yaml')
+    cfg.batch_size = 1
+    dset = StateDataset(
+        cfg = cfg
+    )
 
-    # train_loader, test_loader, _, _ = get_dataloaders(cfg)
-    # print(len(train_loader))
+    data_loader = data.DataLoader(dset, batch_size=cfg.batch_size, shuffle=False, num_workers=cfg.num_workers)
+    batch = next(iter(data_loader))
+    curr_pos, next_pos, action = [b for b in batch]
+    print('curr_pos: {}\nnext_pos: {}\naction: {}'.format(
+        curr_pos, next_pos, action
+    ))

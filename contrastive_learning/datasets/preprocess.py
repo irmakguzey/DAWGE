@@ -84,8 +84,6 @@ def create_pos_pairs(data_dir: str,
             break
         i = j
 
-    # print(f"Data Dir: {data_dir.split('/')[-1]}, Data Length: {len(pos_pairs)}")
-
     with open(os.path.join(data_dir, f'{video_type}_pos_pairs.pkl'), 'wb') as f:
         pickle.dump(pos_pairs, f) # These pos_pairs files are used in dataset
 
@@ -138,14 +136,6 @@ def smoothen_corners(root: str):
     # Dump corners_np
     with open(os.path.join(root, 'smoothened_corners.npy'), 'wb') as f:
         np.save(f, corners_np)
-
-
-# def action_above_thresh(action):
-#     # Return true if the given action is above some action
-#     # will be used to filter states where not strong enough of an action was applied
-#     action = self.dataset.denormalize_action(action[0].cpu().detach().numpy())
-#     thresh = 0.1
-#     return 
 
 # Load corners_np and commands.pickle and dump them in a similar fashion to pos pairs
 def dump_pos_corners(root: str, frame_interval: int):
@@ -209,11 +199,39 @@ def dump_rvec_tvec(root: str, frame_interval: int): # Instead of pos_corners we 
 
     with open(os.path.join(root, 'pos_rvec_tvec_fi_{}.pickle'.format(frame_interval)), 'wb') as f:
         pickle.dump(pos_rvec_tvec, f)
+
+def get_mean_and_rot(corner): # corner (4,2)
+    mean = np.mean(corner, axis=0)
+    diff = corner[0] - corner[1] # Just get two points
+    rot = np.arctan2(diff[0], diff[1])
+    mean_rot = np.concatenate((mean, [rot]), axis=-1)
+    return mean_rot
+
+def dump_pos_mean_rot(root, frame_interval=1):
+    with open(os.path.join(root, 'pos_corners_fi_{}.pickle'.format(frame_interval)), 'rb') as f:
+        pos_corners = pickle.load(f)
+
+    pos_mean_rot = [] # Will have [mean_box_x, mean_box_y, box_rot, mean_dog_x, mean_dog_y, dog_rot]
+    # Get the mean of each corner and find the rotation of the box
+    for i in range(len(pos_corners)):
+        curr_box, curr_dog = get_mean_and_rot(pos_corners[i][0][:4]), get_mean_and_rot(pos_corners[i][0][4:])
+        next_box, next_dog = get_mean_and_rot(pos_corners[i][1][:4]), get_mean_and_rot(pos_corners[i][1][4:])
+        action = pos_corners[i][2]
+
+        pos_mean_rot.append((
+            np.concatenate((curr_box, curr_dog)),
+            np.concatenate((next_box, next_dog)),
+            action
+        ))
     
+    with open(os.path.join(root, f'pos_mean_rot_fi_{frame_interval}.pickle'), 'wb') as f:
+        pickle.dump(pos_mean_rot, f)
+
+    return pos_mean_rot
 
 if __name__ == "__main__":
     # data_dir = "/home/irmak/Workspace/DAWGE/src/dawge_planner/data/box_marker_10"
-    data_dirs = glob.glob("/home/irmak/Workspace/DAWGE/src/dawge_planner/data/box_orientation_2_demos/train_demos/*")
+    data_dirs = glob.glob("/home/irmak/Workspace/DAWGE/src/dawge_planner/data/box_orientation_1_demos/train_demos/*")
     roots = []
     for root in data_dirs:
         if os.path.isdir(root):
@@ -227,8 +245,9 @@ if __name__ == "__main__":
         #     continue
         print('data_dir: {}'.format(data_dir))
         # smoothen_corners(data_dir)
-        dump_pos_corners(data_dir, frame_interval=1)
-        dump_rvec_tvec(data_dir, frame_interval=1)
+        dump_pos_corners(data_dir, frame_interval=5)
+        dump_rvec_tvec(data_dir, frame_interval=5)
+        dump_pos_mean_rot(data_dir, frame_interval=5)
 
         # Test the data with animations
         # AnimateMarkers(

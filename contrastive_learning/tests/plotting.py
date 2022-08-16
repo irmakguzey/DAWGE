@@ -96,6 +96,53 @@ def plot_rvec_tvec(ax, curr_pos, use_img=False, img=None, plot_action=False, act
 
     return img, frame_axis
 
+
+def plot_mean_rot(ax, curr_pos, use_img=False, img=None, use_frame_axis=False, frame_axis=None, plot_action=False, actions=None, color_scheme=1):
+    # actions: [action, pred_action]
+    # curr_pos.shape: (6) [box_mean_x, box_mean_y, box_rot, dog_mean_x, dog_mean_y, dog_rot]
+
+    img_shape = (720, 1280, 3)
+    blank_image = np.ones(img_shape, np.uint8) * 255
+    if use_img == False: # use img is when two plots are drawn on top of each other
+        img = ax.imshow(blank_image.copy())
+
+    if color_scheme == 1: # Actual corners - blue ones
+        box_color = (0,0,255)
+        dog_color = (0,0,153)
+    else: # Predicted corners - predicted green ones
+        box_color = (102,204,0)
+        dog_color = (51,102,0)
+
+    # Plot the rotation and the mean
+    for j in range(2):
+        curr_obs_pos = curr_pos[j*3:(j+1)*3]
+        curr_mean = (int(curr_obs_pos[0]), int(curr_obs_pos[1]))
+        curr_rot = curr_obs_pos[2]
+
+        line_len = 50
+        curr_end_point = (int(curr_mean[0] + np.cos(curr_rot) * line_len),
+                          int(curr_mean[1] - np.sin(curr_rot) * line_len)) # (y starts from top left corner)
+
+        if j == 0: # Show the box position
+            if use_frame_axis:
+                frame_axis = cv2.line(frame_axis.copy(), curr_mean, curr_end_point,
+                                      color=box_color, thickness=3)
+            else:
+                frame_axis = cv2.line(blank_image.copy(), curr_mean, curr_end_point,
+                                      color=box_color, thickness=3)
+
+        else: # We will already have a frame axis given - show the dog position
+            frame_axis = cv2.line(frame_axis.copy(), curr_mean, curr_end_point,
+                                  color=dog_color, thickness=3)
+
+    if plot_action:
+        frame_axis = plot_actions(actions, frame_axis)
+
+    img.set_array(frame_axis)
+    ax.plot()
+
+    return img, frame_axis
+
 def plot_actions(actions, frame_axis):
     action_pos = (1100,600)
 
