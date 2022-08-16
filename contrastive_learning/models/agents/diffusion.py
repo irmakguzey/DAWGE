@@ -11,7 +11,7 @@ from omegaconf import DictConfig, OmegaConf
 from tqdm import tqdm 
 from typing import Tuple, Optional, List
 
-from contrastive_learning.tests.plotting import plot_corners, plot_rvec_tvec
+from contrastive_learning.tests.plotting import plot_corners, plot_rvec_tvec, plot_mean_rot
 
 # Custom imports 
 from contrastive_learning.utils.losses import mse, l1
@@ -81,6 +81,9 @@ class Diffusion:
             elif pos_dim == 6: # Pos type is rotational and translational vectors
                 plotting_fn = plot_rvec_tvec
                 denormalize_fn = self.dataset.denormalize_pos_rvec_tvec # NOTE: This will def cause some problems
+            elif pos_dim == 3: # Pos type is just the mean and rotation of the box
+                plotting_fn = plot_mean_rot
+                denormalize_fn = self.dataset.denormalize_mean_rot
 
             ncols = 10
             nrows = math.ceil(bs / ncols)
