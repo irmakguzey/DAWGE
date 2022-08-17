@@ -1,3 +1,4 @@
+from copy import deepcopy
 import glob
 import numpy as np
 import os
@@ -56,17 +57,21 @@ class StateDataset:
         if cfg.pos_type == 'corners':
             self.action_min, self.action_max, self.corner_min, self.corner_max = self.calculate_corners_mins_maxs()
             self.normalization_fn = self.normalize_corner 
+            self.denormalization_fn = self.denormalize_corner
             self.half_idx = 8
             self.position_arr = self.pos_corners
         elif cfg.pos_type == 'rvec_tvec':
             self.action_min, self.action_max, self.rvecs_min, self.rvecs_max, self.tvecs_min, self.tvecs_max = self.calculate_rvec_mins_maxs()
             self.normalization_fn = self.normalize_rvec_tvec
+            self.denormalization_fn = self.denormalize_rvec_tvec
             self.half_idx = 6
             self.position_arr = self.pos_rvec_tvec
         elif cfg.pos_type == 'mean_rot': # Mean and rotation
             self.action_min, self.action_max, self.mean_min, self.mean_max = self.calculate_mean_rot_mins_maxs()
+            print('self.mean_min: {}, self.mean_max: {}'.format(self.mean_min, self.mean_max))
             self.rot_max, self.rot_min = np.pi, -np.pi # Rotation has always been given between [-pi,pi]
             self.normalization_fn = self.normalize_mean_rot 
+            self.denormalization_fn = self.denormalize_mean_rot # These methods are used in future from other classes
             self.half_idx = 3 
             self.position_arr = self.pos_mean_rots
 
@@ -101,7 +106,8 @@ class StateDataset:
     def getitem(self, index): 
         return self.__getitem__(index) # This is to make this method public so that it can be used in 
 
-    def normalize_mean_rot(self, mean_rot): # Pos: [box_mean_x, box_mean_y, box_rot, dog_mean_x, dog_mean_y, dog_rot] (6,)
+    def normalize_mean_rot(self, mean_rot_real): # Pos: [box_mean_x, box_mean_y, box_rot, dog_mean_x, dog_mean_y, dog_rot] (6,)
+        mean_rot = deepcopy(mean_rot_real)
         mean_rot[:2] = (mean_rot[:2] - self.mean_min) / (self.mean_max - self.mean_min)
         mean_rot[2] = (mean_rot[2] - self.rot_min) / (self.rot_max - self.rot_min)
 

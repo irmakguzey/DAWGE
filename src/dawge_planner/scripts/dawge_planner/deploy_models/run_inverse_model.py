@@ -35,8 +35,9 @@ from re import L
 from sensor_msgs.msg import Image
 
 # Custom imports
+from contrastive_learning.datasets.preprocess import get_mean_and_rot # Will get corner (4,2) shape
 from contrastive_learning.tests.test_model import load_lin_model
-from contrastive_learning.tests.plotting import plot_corners
+from contrastive_learning.tests.plotting import plot_corners, plot_mean_rot
 from contrastive_learning.datasets.state_dataset import StateDataset
 from dawge_planner.tasks.high_lvl_task import HighLevelTask
 
@@ -49,10 +50,11 @@ class RunInverseModel(HighLevelTask):
         self.color_img_msg = None
 
         self.video_fps = fps
+        self.out_dir = out_dir
         now = datetime.now()
         time_str = now.strftime('%d%m%Y_%H%M%S')
         self.demo_name = '{}_inverse_model_demo'.format(time_str)
-        self.out_dir = out_dir
+        self.exp_name = '{}_{}'.format(self.out_dir.split('/')[-2], self.out_dir.split('/')[-1].split('_')[0])
         self.video_dump_dir = video_dump_dir
         self.images_dir = os.path.join(out_dir,self.demo_name)
         os.makedirs(self.images_dir, exist_ok=True)
@@ -60,7 +62,7 @@ class RunInverseModel(HighLevelTask):
 
         # Each corner and id should be saved for each frame
         self.corners, self.ids = [], []
-        self.curr_pos = np.ones((8,2)) * -1 # We are going to fill this up 
+        self.curr_corners = np.ones((8,2)) * -1 # We are going to fill this up 
 
         # Initialize ROS listeners
         rospy.Subscriber(color_img_topic, Image, self.color_img_cb)
@@ -93,24 +95,24 @@ class RunInverseModel(HighLevelTask):
         
         print('self.lin_model: {}'.format(self.lin_model))
 
-        
-
         # Initialize the dataset
         # Get the dataset
         self.cfg.data_dir = '/home/irmak/Workspace/DAWGE/src/dawge_planner/data/box_orientation_1_demos/test_demos' # We will use all the demos
         self.cfg.batch_size = 1
         self.dataset_cfg = deepcopy(self.cfg)
         self.dataset_cfg.pos_ref = 'global' # Dataset will always give global positions, this will help when finding the knn matches
-        self.dataset_cfg.frame_interval = 1
+        # self.dataset_cfg.frame_interval = 1
         self.dataset = StateDataset(self.dataset_cfg)
         
-        # print('self.cfg.pos_ref: {}'.format(self.cfg.pos_ref))
-
-        
-
         self.waiting_counter = 0
         self.desired_next_pos = np.zeros(self.cfg.pos_dim*2,)
         self.is_init_var = False
+
+        # Set the plotting functions according to the pos_type
+        if self.cfg.pos_type == 'mean_rot': 
+            self.plotting_fn = plot_mean_rot
+        elif self.cfg.pos_type == 'corners':
+            self.plotting_fn = plot_corners
 
         print('len(dataset): {}'.format(len(self.dataset)))
 
@@ -154,8 +156,13 @@ class RunInverseModel(HighLevelTask):
                 curr_pos, _, _ = [b.to(self.device) for b in batch]
                 # Normalization of curr_pos is wrong right now - we need to denormalize it with the current dataset 
                 # and then normalize it again with self.dataset
-                curr_pos = datasets[traj_id].denormalize_corner(curr_pos.cpu().detach().numpy()).reshape(-1,2)
-                curr_pos = self.dataset.normalize_corner(curr_pos).flatten()
+                
+                if self.dataset_cfg.pos_type == 'corners':
+                    curr_pos = datasets[traj_id].denormalization_fn(curr_pos[0].cpu().detach().numpy()).reshape(-1,2) # TODO: I think this should be changed
+                else:
+                    curr_pos = datasets[traj_id].denormalization_fn(curr_pos[0].cpu().detach().numpy())
+                
+                curr_pos = self.dataset.normalization_fn(curr_pos) # This will be flattened
                 # Dump the positions for each trajectory there
                 self.all_pos_per_traj[traj_id,i:i+1,:] = curr_pos
                 
@@ -166,33 +173,33 @@ class RunInverseModel(HighLevelTask):
             np.save(f, self.all_pos_per_traj)
 
     # TODO: Find the states where it's closer to the state in the trajectories separately
-    # def get_best_next_pos(self, curr_pos, k=10): # curr_pos should be normalized
-    #     # Find the closest curr_pos from all_curr_pos.npy
-    #     # Return the corresponding next_pos from the same array
-    #     with open(os.path.join(self.cfg.data_dir, 'all_curr_pos.npy'), 'rb') as f:
-    #         all_curr_pos = np.load(f)
+    def get_best_next_pos_id(self, curr_pos, k=10): # curr_pos should be normalized
+        # Find the closest curr_pos from all_curr_pos.npy
+        # Return the corresponding next_pos from the same array
+        with open(os.path.join(self.cfg.data_dir, 'all_curr_pos.npy'), 'rb') as f:
+            all_curr_pos = np.load(f)
 
-    #     dist = np.linalg.norm(all_curr_pos - curr_pos, axis=1) # ord: np.inf it looks at the max of the difference
-    #     # box_dist = np.linalg.norm(all_curr_pos[:,:8] - curr_pos[:8], axis=1)
-    #     # # print('box_dist.shape: {}'.format(box_dist.shape))
-    #     # dog_dist = np.linalg.norm(all_curr_pos[:,8:] - curr_pos[8:], axis=1)
-    #     # # dist = box_dist + dog_dist*2
-    #     # # print('dist.shape: {}'.format(dist.shape))
+        dist = np.linalg.norm(all_curr_pos - curr_pos, axis=1) # ord: np.inf it looks at the max of the difference
+        # box_dist = np.linalg.norm(all_curr_pos[:,:8] - curr_pos[:8], axis=1)
+        # # print('box_dist.shape: {}'.format(box_dist.shape))
+        # dog_dist = np.linalg.norm(all_curr_pos[:,8:] - curr_pos[8:], axis=1)
+        # # dist = box_dist + dog_dist*2
+        # # print('dist.shape: {}'.format(dist.shape))
 
-    #     # box_dist_sorted = np.argsort(box_dist)
-    #     # dog_dist_sorted = np.argsort(dog_dist)
+        # box_dist_sorted = np.argsort(box_dist)
+        # dog_dist_sorted = np.argsort(dog_dist)
 
-    #     # index_order_sum = np.zeros((box_dist.shape))
-    #     # # Find the first k indices that are common in both of them
-    #     # for i in range(len(index_order_sum)):
-    #     #     # Add the indices 
-    #     #     index_order_sum[box_dist_sorted[i]] += i 
-    #     #     index_order_sum[dog_dist_sorted[i]] += i 
+        # index_order_sum = np.zeros((box_dist.shape))
+        # # Find the first k indices that are common in both of them
+        # for i in range(len(index_order_sum)):
+        #     # Add the indices 
+        #     index_order_sum[box_dist_sorted[i]] += i 
+        #     index_order_sum[dog_dist_sorted[i]] += i 
 
-    #     closest_idx = np.argsort(dist)[:k]
-    #     # closest_idx = np.argsort(index_order_sum)[:k]
+        closest_idx = np.argsort(dist)[:k]
+        # closest_idx = np.argsort(index_order_sum)[:k]
 
-    #     return closest_idx
+        return closest_idx
 
     def get_best_next_pos(self, curr_pos, percentage=25.): # next element of the chosen state will be the next state anyways - we can directly return the next pos
         # Load the positions for all trajectories
@@ -216,12 +223,7 @@ class RunInverseModel(HighLevelTask):
         # Get the percentage'th best trajectory 
         perc_id = int(best_traj_ids.shape[0] * (percentage / 100.))
         best_traj_id = best_traj_ids[perc_id]
-        next_pos = self.all_pos_per_traj[best_traj_id, best_state_ids[best_traj_id]+2, :] # TODO: Do this +1 - for now it will only try to go to that position
-
-        # Get the mean of the kth first trajectories's closest states
-        # self.
-
-        # print('best_traj_id: {}, best_state_id: {}'.format(best_traj_id, best_state_ids[best_traj_id]))
+        next_pos = self.all_pos_per_traj[best_traj_id, best_state_ids[best_traj_id]+self.cfg.frame_interval, :] # TODO: Do this +1 - for now it will only try to go to that position
 
         return next_pos
 
@@ -229,9 +231,6 @@ class RunInverseModel(HighLevelTask):
         with open(os.path.join(self.cfg.data_dir, 'all_curr_pos.npy'), 'rb') as f:
             all_curr_pos = np.load(f)
 
-        # print('all_curr_pos.shape: {}, curr_pos.shape: {}'.format(
-        #     all_curr_pos.shape, curr_pos.shape
-        # ))
         dist = np.linalg.norm(all_curr_pos - curr_pos, axis=1)
         dist.sort()
 
@@ -252,34 +251,36 @@ class RunInverseModel(HighLevelTask):
     
         # Normalize the curr_pos
         self.get_corners()
-        curr_pos = self.dataset.normalize_corner(self.curr_pos).flatten() # This pos is global
+        if self.cfg.pos_type == 'mean_rot':
+            self.calc_mean_rot() # It will set self.curr_pos accordingly
+        elif self.cfg.pos_type == 'corners':
+            self.curr_pos = deepcopy(self.curr_corners)
+        curr_pos = self.dataset.normalization_fn(self.curr_pos) # This pos is global
 
         # Check if the current position is out of distribution
         # if self.is_out_of_distribution(curr_pos):
         #     print('STATE OUT OF DISTRIBUTION!!!')
             # return # Don't change anything if we have gone out of distribution
 
-        # closest_idx = self.get_best_next_pos(curr_pos, k=50)
+        # closest_idx = self.get_best_next_pos_id(curr_pos, k=50)
         # for i,closest_id in enumerate(closest_idx):
         #     _, next_pos, action = self.dataset.getitem(closest_id) # next_pos is also global
-            # if self.action_above_thresh(action):
-            #     break
+        #     if self.action_above_thresh(action):
+        #         break
+        # next_pos = torch.unsqueeze(torch.FloatTensor(next_pos), 0).to(self.device)
+        # action = self.dataset.denormalize_action(action.cpu().detach().numpy())
+
 
         half_idx = self.cfg.pos_dim
         curr_dog_dist = np.linalg.norm(curr_pos[half_idx:] - self.desired_next_pos[half_idx:])
-        print('curr_dog_dist: {}'.format(curr_dog_dist))
-        if (self.desired_next_pos == 0).all() or curr_dog_dist < 0.05 or curr_dog_dist > 0.08: # Don't change the next_pos that frequently
-            self.desired_next_pos = self.get_best_next_pos(curr_pos, percentage=50.)
-            print('NEXT POS CHANGED')
-        # print('next_pos.shape: {}'.format(next_pos.shape))
-        # curr_dist = np.linalg.norm(next_pos - curr_pos)
-        # print('curr_dist: {}'.format(curr_dist))
-        
-        # print('curr_dog_dist: {}'.format(curr_dog_dist))
-
-        # print('self.desired_next_pos: {}'.format(self.desired_next_pos))
-        curr_pos = torch.unsqueeze(torch.FloatTensor(curr_pos), 0).to(self.device)
+        # if (self.desired_next_pos == 0).all() or curr_dog_dist < 0.05 or curr_dog_dist > 0.08: # Don't change the next_pos that frequently
+        self.desired_next_pos = self.get_best_next_pos(curr_pos, percentage=50.)
         next_pos = torch.unsqueeze(torch.FloatTensor(self.desired_next_pos), 0).to(self.device)
+        action = np.zeros((self.cfg.action_dim)) # TODO: Change this - this is only for meaned best next state prediction
+        action = self.dataset.denormalize_action(action) # It is already cpu'ed abd everything when it was dumped
+        
+
+        curr_pos = torch.unsqueeze(torch.FloatTensor(curr_pos), 0).to(self.device)
 
         # Take the reference here
         ref_tensor = torch.zeros((curr_pos.shape))
@@ -292,12 +293,8 @@ class RunInverseModel(HighLevelTask):
             ref_tensor = ref_tensor.repeat(1,2)
 
         pred_action = self.lin_model(curr_pos-ref_tensor, next_pos-ref_tensor)
-
-        # Denormalize the action``
         pred_action = self.dataset.denormalize_action(pred_action[0].cpu().detach().numpy()) # NOTE: what is the 0 for?
-        # action = self.dataset.denormalize_action(action.cpu().detach().numpy())
-        action = np.zeros((pred_action.shape)) # TODO: Change this - this is only for meaned best next state prediction
-        # action = self.dataset.denormalize_action(action) # It is already cpu'ed abd everything when it was dumped
+
         # Make both of the actions be a bit slower - predicted action turns out to be way faster
         # pred_action /= 5 # Rotation can be very slow
         if abs(pred_action[1]) > 0.3:
@@ -319,17 +316,20 @@ class RunInverseModel(HighLevelTask):
         self.high_cmd_msg.rotateSpeed = pred_action[1] / 2
 
         # Plot and publish the positions
-        _, frame_axis = plot_corners(
+        _, frame_axis = self.plotting_fn(
             self.ax, self.curr_pos,
             color_scheme=1)
+        print('self.curr_pos: {}'.format(self.curr_pos))
+
         # Plot the next_pos
-        next_pos = self.dataset.denormalize_corner(next_pos.cpu().detach().numpy())
-        _, frame_axis = plot_corners(
+        next_pos = self.dataset.denormalization_fn(next_pos[0].cpu().detach().numpy())
+        _, frame_axis = self.plotting_fn(
             self.ax, next_pos,
             use_frame_axis=True, frame_axis=frame_axis,
             plot_action=True, actions=(action, pred_action),
             color_scheme=2
         )
+        print('next_pos: {}'.format(next_pos))
         self.frame += 1
         cv2.imwrite(os.path.join(self.images_dir, 'frame_{:04d}.png'.format(self.frame)), cv2.cvtColor(frame_axis, cv2.COLOR_RGB2BGR))
         self.pub_marker_image(frame_axis)
@@ -351,9 +351,14 @@ class RunInverseModel(HighLevelTask):
 
         for i in range(len(curr_corners)): # Number of markers
             if curr_ids[i] == 1:
-                self.curr_pos[:4,:] = curr_corners[i][0,:]
+                self.curr_corners[:4,:] = curr_corners[i][0,:]
             elif curr_ids[i] == 2:
-                self.curr_pos[4:,:] = curr_corners[i][0,:]
+                self.curr_corners[4:,:] = curr_corners[i][0,:]
+
+    # This function will be called after self.get_corners
+    def calc_mean_rot(self):
+        curr_box, curr_dog = get_mean_and_rot(self.curr_corners[:4,:]), get_mean_and_rot(self.curr_corners[4:,:])
+        self.curr_pos = np.concatenate((curr_box, curr_dog))
 
     def is_initialized(self):
         if not self.is_init_var:
@@ -363,7 +368,7 @@ class RunInverseModel(HighLevelTask):
             
             self.get_corners()
 
-            if (self.curr_pos == -1).any():
+            if (self.curr_corners == -1).any():
                 print('some of the markers are not initialized')
                 return False 
 
@@ -385,7 +390,7 @@ class RunInverseModel(HighLevelTask):
     def convert_to_video(self): 
         before_dumping = datetime.now()
 
-        color_video_name = '{}/{}.mp4'.format(self.video_dump_dir, self.demo_name)
+        color_video_name = '{}/{}_{}.mp4'.format(self.video_dump_dir, self.exp_name, self.demo_name)
         os.system('ffmpeg -f image2 -r {} -i {}/%*.png -vcodec libx264 -profile:v high444 -pix_fmt yuv420p {}'.format(
             self.video_fps, # fps
             self.images_dir,
@@ -409,7 +414,7 @@ if __name__ == "__main__":
     # 2022.08.03-19-59_pli_ref_dog_lf_mse_fi_1_pt_corners_bs_64_hd_64_lr_0.001_zd_8
 
     task = RunInverseModel(
-        out_dir='/home/irmak/Workspace/DAWGE/contrastive_learning/out/2022.08.03/19-59_pli_ref_dog_lf_mse_fi_1_pt_corners_bs_64_hd_64_lr_0.001_zd_8',
+        out_dir='/home/irmak/Workspace/DAWGE/contrastive_learning/out/2022.08.16/14-02_pli_ref_dog_fi_2_pt_mean_rot_bs_64_hd_64_lr_0.001_zd_8',
         video_dump_dir='/home/irmak/Workspace/DAWGE/src/dawge_planner/data/deployments',
         high_cmd_topic='dawge_high_cmd',
         high_state_topic='dawge_high_state',
@@ -419,5 +424,6 @@ if __name__ == "__main__":
     )
 
     task.dump_all_pos_per_traj() # NOTE: delete this afterwards
+    # task.dump_all_pos()
 
     task.run()
